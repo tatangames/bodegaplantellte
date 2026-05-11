@@ -287,6 +287,9 @@ class RepuestosController extends Controller
                 'id_historial' => $histoEntrada->id,
                 'id_material'  => $request->datainfo[$i],
                 'cantidad'     => $cant,
+                'codigo'       => $request->codigo[$i],
+                'precio'       => $request->precio[$i],
+
             ])->values()->toArray();
 
             HistorialEntradasDeta::insert($detalles);

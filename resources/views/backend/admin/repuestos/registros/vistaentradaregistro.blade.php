@@ -139,9 +139,23 @@
                             </div>
 
                             <div class="form-group" >
-                                <label class="control-label">Cantidad</label>
+                                <label class="control-label">Cantidad <span style="color: red">*</span></label>
                                 <div class="col-md-6">
                                     <input id="cantidad" class='form-control' autocomplete="off" placeholder="0">
+                                </div>
+                            </div>
+
+                            <div class="form-group" >
+                                <label class="control-label">Código (opcional)</label>
+                                <div class="col-md-6">
+                                    <input id="codigo" class='form-control' maxlength="100" autocomplete="off" placeholder="0">
+                                </div>
+                            </div>
+
+                            <div class="form-group" >
+                                <label class="control-label">Precio <span style="color: red">*</span></label>
+                                <div class="col-md-6">
+                                    <input id="precio" min="0" class='form-control' autocomplete="off" placeholder="0.0">
                                 </div>
                             </div>
 
@@ -156,6 +170,8 @@
             </div>
         </div>
     </div>
+
+
 
     <section class="content-header">
         <div class="row mb-2">
@@ -179,6 +195,8 @@
                             <th style="width: 3%">#</th>
                             <th style="width: 10%">Descripción</th>
                             <th style="width: 6%">Cantidad</th>
+                            <th style="width: 6%">Código</th>
+                            <th style="width: 6%">Precio</th>
                             <th style="width: 5%">Opciones</th>
                         </tr>
                         </thead>
@@ -256,6 +274,8 @@
             var repuesto = document.querySelector('#repuesto');
             var nomRepuesto = document.getElementById('repuesto').value;
             var cantidad = document.getElementById('cantidad').value;
+            var codigo = document.getElementById('codigo').value;
+            var precio = document.getElementById('precio').value;
 
             if(repuesto.dataset.info == 0){
                 toastr.error("Repuesto es requerido");
@@ -286,6 +306,28 @@
                 return;
             }
 
+            //*************
+
+            if(precio === ''){
+                toastr.error('Precio es requerida');
+                return;
+            }
+
+            if(!precio.match(reglaNumeroDosDecimal)) {
+                toastr.error('Precio debe ser número Decimal (2 decimales) y no Negativo');
+                return;
+            }
+
+            if(precio < 0){
+                toastr.error('Precio no debe ser negativo');
+                return;
+            }
+
+            if(precio > 1000000){
+                toastr.error('Precio máximo 1 millón');
+                return;
+            }
+
             //**************
 
             var nFilas = $('#matriz >tbody >tr').length;
@@ -303,6 +345,14 @@
 
                 "<td>" +
                 "<input name='cantidadArray[]' disabled value='" + cantidad + "' class='form-control' type='number'>" +
+                "</td>" +
+
+                "<td>" +
+                "<input name='codigoArray[]' disabled value='" + codigo + "' class='form-control' type='text'>" +
+                "</td>" +
+
+                "<td>" +
+                "<input name='precioArray[]' disabled value='" + precio + "' class='form-control' type='number'>" +
                 "</td>" +
 
                 "<td>" +
@@ -443,6 +493,8 @@
             var descripcion = $("input[name='descripcionArray[]']").map(function(){return $(this).val();}).get();
             var descripcionAtributo = $("input[name='descripcionArray[]']").map(function(){return $(this).attr("data-info");}).get();
             var cantidad = $("input[name='cantidadArray[]']").map(function(){return $(this).val();}).get();
+            var codigo = $("input[name='codigoArray[]']").map(function(){return $(this).val();}).get();
+            var precio = $("input[name='precioArray[]']").map(function(){return $(this).val();}).get();
 
             for(var a = 0; a < cantidad.length; a++){
 
@@ -504,6 +556,8 @@
             for(var p = 0; p < cantidad.length; p++){
 
                 formData.append('cantidad[]', cantidad[p]);
+                formData.append('codigo[]', codigo[p]);
+                formData.append('precio[]', precio[p]);
                 formData.append('datainfo[]', descripcionAtributo[p]);
             }
 
