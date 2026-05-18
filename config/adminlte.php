@@ -450,6 +450,13 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.reporte.inventario.tengoporproyecto.index',
                 ],
+                [
+                    'text' => 'Proyecto Códigos',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.proyectos.codigos.index',
+                ],
+
+
 
 
             ],

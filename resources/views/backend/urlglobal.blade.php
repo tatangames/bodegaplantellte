@@ -1,4 +1,4 @@
-<!-- URL GLOBAL PETICIONES POST          /xxxx.com       -->
+<!-- URL GLOBAL PETICIONES POST          /obradebanco.com       -->
 <script type="text/javascript">
     var urlAdmin = "/obradebanco.com";
 </script>
