@@ -267,7 +267,7 @@ class RepuestosController extends Controller
             ]);
 
         // Salidas por proyecto usando whereIn
-        $salidas = \App\Models\SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
+        $salidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
             ->with('salida.tipoproyecto')
             ->get()
             ->groupBy(fn($item) => $item->salida->id_tipoproyecto)

@@ -27,6 +27,6 @@ class EntradasDetalle extends Model
 
     public function entrada()
     {
-        return $this->belongsTo(\App\Models\Entradas::class, 'id_entradas');
+        return $this->belongsTo(Entradas::class, 'id_entradas');
     }
 }
