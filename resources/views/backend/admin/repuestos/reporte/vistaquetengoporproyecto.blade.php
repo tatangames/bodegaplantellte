@@ -160,6 +160,7 @@
                             <div class="reporte-header completado">
                                 <i class="fas fa-flag-checkered"></i>
                                 <h5>Sobrantes de Proyecto Completado</h5>
+                                <h5>REPORTE DE SALDOS DE MATERIALES SOBRANTES</h5>
                             </div>
                             <div class="reporte-body">
                                 <p style="font-size:13px; color:#666; margin-bottom:14px;">

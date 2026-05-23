@@ -550,15 +550,7 @@ class ReportesController extends Controller
     }
 
 
-    public function vistaProyectoCompletado()
-    {
-        // Proyectos cerrados = transferido 1
-        $transferido = Tipoproyecto::where('transferido', 1)
-            ->orderBy('nombre', 'ASC')
-            ->get();
 
-        return view('backend.admin.repuestos.reporte.vistaproyectocompletado', compact('transferido'));
-    }
 
     public function reporteProyectoTerminado($idtrans)
     {
@@ -664,7 +656,7 @@ class ReportesController extends Controller
             <table width='100%' style='font-size:10px;'>
                 <tr>
                     <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
-                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>GEAD-001-INFO</td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>GEAD-002-REPO</td>
                 </tr>
                 <tr>
                     <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
@@ -690,7 +682,7 @@ class ReportesController extends Controller
 <table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
     <tr>
         <td style='font-size:13px; padding:4px 0;'>
-            <span style='font-weight:bold;'>Proyecto:</span> {$infoProyecto->nombre}<br>
+            <span style='font-weight:bold;'>Proyecto de origen de los materiales:</span> {$infoProyecto->nombre}<br>
             <span style='font-weight:bold;'>Fecha de cierre:</span> $fechaCierre<br>
             <span style='font-weight:bold;'>Fecha de generación:</span> $fechaGenerado
         </td>
@@ -1195,77 +1187,80 @@ class ReportesController extends Controller
         $descripcion  = urldecode($descripcion);
 
         $proyecto = DB::table('tipoproyecto')->where('id', $idproy)->first();
+        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
 
         $rows = DB::select("
-    WITH entradas AS (
+        WITH entradas AS (
+            SELECT
+                ed.id               AS id_entradadetalle,
+                ed.id_material,
+                ed.precio,
+                ed.codigo           AS codigo_detalle,
+                ed.nombre           AS nombre_copia,
+                ed.cantidad_inicial AS cantidad_entrada,
+                e.fecha             AS fecha_entrada
+            FROM entradas_detalle ed
+            JOIN entradas e ON e.id = ed.id_entradas
+            WHERE e.id_tipoproyecto = ?
+        ),
+        salidas AS (
+            SELECT
+                sd.id_entrada_detalle,
+                sd.cantidad_salida,
+                s.fecha AS fecha_salida
+            FROM salidas_detalle sd
+            JOIN salidas s ON s.id = sd.id_salida
+            WHERE s.id_tipoproyecto = ?
+        ),
+        in_before AS (
+            SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
+            FROM entradas WHERE fecha_entrada < ?
+            GROUP BY id_entradadetalle
+        ),
+        out_before AS (
+            SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
+            FROM salidas WHERE fecha_salida < ?
+            GROUP BY id_entrada_detalle
+        ),
+        in_period AS (
+            SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
+            FROM entradas WHERE fecha_entrada >= ? AND fecha_entrada <= ?
+            GROUP BY id_entradadetalle
+        ),
+        out_period AS (
+            SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
+            FROM salidas WHERE fecha_salida >= ? AND fecha_salida <= ?
+            GROUP BY id_entrada_detalle
+        )
         SELECT
-            ed.id               AS id_entradadetalle,
-            ed.id_material,
-            ed.precio,
-            ed.codigo           AS codigo_detalle,
-            ed.nombre           AS nombre_copia,
-            ed.cantidad_inicial AS cantidad_entrada,
-            e.fecha             AS fecha_entrada
-        FROM entradas_detalle ed
-        JOIN entradas e ON e.id = ed.id_entradas
-        WHERE e.id_tipoproyecto = ?
-    ),
-    salidas AS (
-        SELECT
-            sd.id_entrada_detalle,
-            sd.cantidad_salida,
-            s.fecha AS fecha_salida
-        FROM salidas_detalle sd
-        JOIN salidas s ON s.id = sd.id_salida
-        WHERE s.id_tipoproyecto = ?
-    ),
-    in_before AS (
-        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
-        FROM entradas WHERE fecha_entrada < ?
-        GROUP BY id_entradadetalle
-    ),
-    out_before AS (
-        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
-        FROM salidas WHERE fecha_salida < ?
-        GROUP BY id_entrada_detalle
-    ),
-    in_period AS (
-        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
-        FROM entradas WHERE fecha_entrada >= ? AND fecha_entrada <= ?
-        GROUP BY id_entradadetalle
-    ),
-    out_period AS (
-        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
-        FROM salidas WHERE fecha_salida >= ? AND fecha_salida <= ?
-        GROUP BY id_entrada_detalle
-    )
-    SELECT
-        en.id_entradadetalle,
-        en.id_material,
-        obj.codigo                          AS codigo_obj,
-        COALESCE(m.nombre, en.nombre_copia) AS descripcion,
-        en.precio,
-        COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)  AS saldo_inicial_cant,
-        COALESCE(ip.qty_in_period,  0)                                   AS entradas_cant,
-        COALESCE(op.qty_out_period, 0)                                   AS salidas_cant,
-        (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-         + COALESCE(ip.qty_in_period, 0)
-         - COALESCE(op.qty_out_period, 0))                               AS saldo_final_cant,
-        ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
-        (COALESCE(ip.qty_in_period,  0) * en.precio)                                   AS entradas_money,
-        (COALESCE(op.qty_out_period, 0) * en.precio)                                   AS salidas_money,
-        ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-          + COALESCE(ip.qty_in_period, 0)
-          - COALESCE(op.qty_out_period, 0)) * en.precio)                               AS saldo_final_money
-    FROM entradas en
-    LEFT JOIN materiales m          ON m.id  = en.id_material
-    LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
-    LEFT JOIN in_before  ib ON ib.id_entradadetalle  = en.id_entradadetalle
-    LEFT JOIN out_before ob ON ob.id_entrada_detalle = en.id_entradadetalle
-    LEFT JOIN in_period  ip ON ip.id_entradadetalle  = en.id_entradadetalle
-    LEFT JOIN out_period op ON op.id_entrada_detalle = en.id_entradadetalle
-    ORDER BY obj.codigo, descripcion, en.precio
-    ", [
+            en.id_entradadetalle,
+            en.id_material,
+            obj.codigo                          AS codigo_obj,
+            COALESCE(m.nombre, en.nombre_copia) AS descripcion,
+            um.nombre                           AS unidad_medida,
+            en.precio,
+            COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)  AS saldo_inicial_cant,
+            COALESCE(ip.qty_in_period,  0)                                   AS entradas_cant,
+            COALESCE(op.qty_out_period, 0)                                   AS salidas_cant,
+            (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+             + COALESCE(ip.qty_in_period, 0)
+             - COALESCE(op.qty_out_period, 0))                               AS saldo_final_cant,
+            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
+            (COALESCE(ip.qty_in_period,  0) * en.precio)                                   AS entradas_money,
+            (COALESCE(op.qty_out_period, 0) * en.precio)                                   AS salidas_money,
+            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+              + COALESCE(ip.qty_in_period, 0)
+              - COALESCE(op.qty_out_period, 0)) * en.precio)                               AS saldo_final_money
+        FROM entradas en
+        LEFT JOIN materiales m          ON m.id  = en.id_material
+        LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
+        LEFT JOIN unidadmedida um       ON um.id  = m.id_medida
+        LEFT JOIN in_before  ib ON ib.id_entradadetalle  = en.id_entradadetalle
+        LEFT JOIN out_before ob ON ob.id_entrada_detalle = en.id_entradadetalle
+        LEFT JOIN in_period  ip ON ip.id_entradadetalle  = en.id_entradadetalle
+        LEFT JOIN out_period op ON op.id_entrada_detalle = en.id_entradadetalle
+        ORDER BY obj.codigo, descripcion, en.precio
+        ", [
             $idproy, $idproy,
             $start->toDateString(), $start->toDateString(),
             $start->toDateString(), $end->toDateString(),
@@ -1343,13 +1338,13 @@ class ReportesController extends Controller
         </td>
         <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
                    padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
-            CONTROL DE ENTRADAS/SALIDAS
+            REPORTE DE SALDOS DE MATERIALES SOBRANTES
         </td>
         <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
             <table width='100%' style='font-size:10px;'>
                 <tr>
                     <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
-                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>GEAD-002-REPO</td>
                 </tr>
                 <tr>
                     <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
@@ -1364,8 +1359,8 @@ class ReportesController extends Controller
     </tr>
 </table>
 <br>
-<strong>Proyecto:</strong> {$nombreProyecto}<br>
-<strong>Del {$desdeFormat} al {$hastaFormat}</strong><br><br>
+<strong>PROYECTO DE ORIGEN DE LOS MATERIALES:</strong> {$nombreProyecto}<br>
+<strong>PERIODO: {$desdeFormat} AL {$hastaFormat}</strong><br><br>
 ";
 
 
@@ -1382,17 +1377,18 @@ class ReportesController extends Controller
     <thead style='background:#f2f4f8;'>
         <tr>
             <th style='width:3%;'>#</th>
-            <th style='width:8%;'>Código</th>
-            <th>Descripción / Nombre</th>
-            <th style='text-align:right; width:7%;'>PRECIO</th>
-            <th style='text-align:right; width:7%;'>INICIAL</th>
-            <th style='text-align:right; width:8%;'>\$ INICIAL</th>
-            <th style='text-align:right; width:8%;'>ENTRADAS</th>
-            <th style='text-align:right; width:9%;'>\$ ENTRADAS</th>
-            <th style='text-align:right; width:6%;'>SALIDAS</th>
-            <th style='text-align:right; width:8%;'>\$ SALIDAS</th>
-            <th style='text-align:right; width:5%;'>SALDO</th>
-            <th style='text-align:right; width:8%;'>\$ SALDO</th>
+            <th style='width:8%; text-align: center'>COD PRESUP.</th>
+             <th style='width:8%; text-align: center'>U. MEDIDA</th>
+            <th style='text-align: center'>DESCRIPCIÓN</th>
+            <th style='text-align:center; width:7%;'>PRECIO UNITARIO</th>
+            <th style='text-align:center; width:8%;'>EXISTENCIA INICIAL</th>
+            <th style='text-align:center; width:8%;'>\$ SALDO INICIAL</th>
+            <th style='text-align:center; width:8%;'>ENTRADAS</th>
+            <th style='text-align:center; width:9%;'>\$ ENTRADAS</th>
+            <th style='text-align:center; width:8%;'>SALIDAS TOTALES</th>
+            <th style='text-align:center; width:8%;'>SALDO POR SALIDAS</th>
+            <th style='text-align:center; width:8%;'>EXISTENCIA ACTUAL</th>
+            <th style='text-align:center; width:8%;'>SALDO EXISTENCIA ACTUAL</th>
         </tr>
     </thead>
     <tbody>
@@ -1409,6 +1405,7 @@ class ReportesController extends Controller
 <tr>
     <td>{$i}</td>
     <td style='text-align:center;'>{$codigoHtml}</td>
+    <td style='text-align:center;'>".e($r->unidad_medida ?? 'N/A')."</td>
     <td>".e($r->descripcion)."</td>
     <td style='text-align:right;'>$".number_format($r->precio              ?? 0, 4)."</td>
     <td style='text-align:right;'>".number_format($r->saldo_inicial_cant   ?? 0)."</td>
@@ -1432,7 +1429,7 @@ class ReportesController extends Controller
     </tbody>
     <tfoot>
         <tr style='font-weight:bold; background:#f9fafb;'>
-            <td colspan='4' style='text-align:right;'>Totales:</td>
+            <td colspan='5' style='text-align:right;'>TOTALES:</td>
             <td style='text-align:right;'>".number_format($totales['inicial_cant'])."</td>
             <td style='text-align:right;'>$".number_format($totales['inicial_money'],  2)."</td>
             <td style='text-align:right;'>".number_format($totales['entradas_cant'])."</td>
@@ -1494,7 +1491,7 @@ class ReportesController extends Controller
     <thead style='background:#f2f4f8;'>
         <tr>
             <th style='width:4%;'>#</th>
-            <th style='width:10%;'>Código</th>
+            <th style='width:10%;'>COD. PRESUP.</th>
             <th style='text-align:right; width:6%;'>INICIAL</th>
             <th style='text-align:right; width:10%;'>\$ INICIAL</th>
             <th style='text-align:right; width:6%;'>ENTRADAS</th>
@@ -1547,9 +1544,9 @@ class ReportesController extends Controller
         $html .= "
 <br>
 <table width='100%' border='1' cellspacing='0' cellpadding='6'
-       style='border-collapse:collapse; font-size:11px;'>
+       style='border-collapse:collapse; font-size:11px; margin-top:{$informacionGeneral->px_observaciones}px;'>
     <tr style='background:#f2f4f8;'>
-        <td style='font-weight:bold;'>Observaciones: </td>
+        <td style='font-weight:bold; font-size: 14px'>Observaciones: </td>
     </tr>
     <tr>
         <td style='height:50px; font-size: 14px; vertical-align:top;'>$descripcion</td>
@@ -1557,23 +1554,59 @@ class ReportesController extends Controller
 </table>
 ";
 
-        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
 
 
-        // ── Firma central ─────────────────────────────────────────────────
+
+        // ── Firmas ────────────────────────────────────────────────────────
         $html .= "
-<table width='100%' style='border-collapse:collapse; margin-top:{$informacionGeneral->px_sobrantes}px;'>
+<table width='100%' style='border-collapse:collapse; margin-top:{$informacionGeneral->px_sobrantes}px; font-size:11px;'>
     <tr>
-        <td style='width:33%;'></td>
-        <td style='width:34%; height:60px;'></td>
-        <td style='width:33%;'></td>
-    </tr>
-    <tr>
-        <td style='width:33%;'></td>
-        <td style='width:34%; text-align:center; font-size:12px; border-top:0.8px solid #000; padding-top:6px;'>
-            <strong>UNIDAD ESTRUCTURAS METÁLICAS</strong>
+        <td style='width:50%; padding-right:40px; vertical-align:top;'>
+            <strong>ELABORADO POR:</strong><br><br><br>
+            <table width='100%' style='border-collapse:collapse;'>
+                <tr>
+                    <td style='width:20%;'>FIRMA:</td>
+                    <td style='border-bottom:0.8px solid #000; width:75%;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td>NOMBRE:</td>
+                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td>CARGO:</td>
+                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td colspan='2' style='text-align:center;'>[ENCARGADO DE BODEGA DE PROYECTO O RESPONSABLE ASIGNADO]</td>
+                </tr>
+            </table>
         </td>
-        <td style='width:33%;'></td>
+       <td style='width:50%; padding-left:40px; vertical-align:top;'>
+            <strong>REVISADO POR:</strong><br><br><br>
+            <table width='100%' style='border-collapse:collapse;'>
+                <tr>
+                    <td style='width:20%;'>FIRMA:</td>
+                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td>NOMBRE:</td>
+                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td>CARGO:</td>
+                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2' style='height:20px;'></td></tr>
+                <tr>
+                    <td colspan='2' style='text-align:center;'>JEFE INMEDIATO</td>
+                </tr>
+            </table>
+        </td>
     </tr>
 </table>
 ";

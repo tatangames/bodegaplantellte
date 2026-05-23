@@ -170,7 +170,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/quetengopor/proyectos/pdf/{idproy}', [ReportesController::class,'reporteQueTengoPorProyecto']);
 
     // --- REPORTE / VER LOS MATERIALES QUE SOBRARON DE UN PROYECTO COMPLETADO
-    Route::get('/admin/reporte/inventario/sobranteterminado/proyecto', [ReportesController::class,'vistaProyectoCompletado'])->name('admin.reporte.inventario.proyectocompletado.index');
     Route::get('/admin/reporte/inventario/sobranteterminado/proy/{idtrans}', [ReportesController::class,'reporteProyectoTerminado']);
 
 

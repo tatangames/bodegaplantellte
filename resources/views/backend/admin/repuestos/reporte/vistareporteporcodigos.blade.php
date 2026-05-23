@@ -75,12 +75,10 @@
                         <div class="reporte-card">
                             <div class="reporte-header entradas">
                                 <i class="fas fa-arrow-circle-down"></i>
-                                <h5>Reporte Mensual - Proyecto</h5>
+                                <h5>REPORTE DE SALDOS DE MATERIALES SOBRANTES <br>(GEAD-002-REPO)</h5>
                             </div>
                             <div class="reporte-body">
-                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
-                                    Materiales que han ingresado a un proyecto en un rango de fechas.
-                                </p>
+
                                 <hr class="divider">
 
                                 {{-- Fechas --}}
