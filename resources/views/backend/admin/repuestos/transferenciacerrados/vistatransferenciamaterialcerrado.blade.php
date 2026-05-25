@@ -315,7 +315,101 @@
             </div>
         </div>
 
-        {{-- ══ MODAL: GEAD-002-FORM ══ --}}
+        {{-- ══ MODAL: GEAD-001-FORM (Reserva) ══ --}}
+        <div class="modal fade" id="modalForm001" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#3d1f6b,#6f42c1)">
+                        <h4 class="modal-title" style="color:#fff">
+                            <i class="fas fa-lock mr-2"></i>Formulario de Reserva — GEAD-001-FORM
+                        </h4>
+                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert" style="font-size:12px; background:#f3eeff; border-left:4px solid #6f42c1;">
+                            <i class="fas fa-info-circle mr-1" style="color:#6f42c1;"></i>
+                            Formulario para Reserva de Materiales Sobrantes. La Unidad Solicitante es requerida.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label"><i class="fas fa-hashtag mr-1"></i>No. de Solicitud</label>
+                                    <input type="text" class="form-control" id="form001-numero" placeholder="Ej: 001-2025">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label"><i class="fas fa-lock mr-1"></i>Proyecto de Origen de los Materiales</label>
+                                    <input type="text" class="form-control" id="form001-proyecto-origen" disabled>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-project-diagram mr-1"></i>Proyecto en Formulación
+                            </label>
+                            <input type="text" class="form-control" id="form001-proyecto-formul"
+                                   placeholder="Nombre del proyecto al que se destinarán los materiales…">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label"><i class="fas fa-align-left mr-1"></i>Justificación del Destino</label>
+                            <textarea class="form-control" id="form001-justificacion" rows="2"
+                                      placeholder="Justifique la reserva de los materiales…"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-building mr-1"></i>Unidad Solicitante <span style="color:red">*</span>
+                                    </label>
+                                    <select class="form-control" id="form001-departamento">
+                                        <option value="">— Seleccionar —</option>
+                                        @foreach($departamentos as $d)
+                                            <option value="{{ $d->id }}" data-nombre="{{ $d->nombre }}">{{ $d->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label"><i class="fas fa-user mr-1"></i>Nombre del Solicitante</label>
+                                    <input type="text" class="form-control" id="form001-nombre" placeholder="Nombre completo">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label"><i class="fas fa-id-badge mr-1"></i>Cargo del Solicitante</label>
+                                    <input type="text" class="form-control" id="form001-cargo" placeholder="Cargo o puesto">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label"><i class="fas fa-sticky-note mr-1"></i>Observaciones</label>
+                                    <textarea class="form-control" id="form001-observaciones" rows="2"
+                                              placeholder="Observaciones adicionales (opcional)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Cancelar
+                        </button>
+                        <button type="button" onclick="generarForm001PDF()"
+                                style="background:linear-gradient(135deg,#3d1f6b,#6f42c1); border:none;
+                                       color:#fff; font-weight:600; border-radius:6px; padding:8px 18px;">
+                            <i class="fas fa-file-pdf mr-1"></i>Generar GEAD-001-FORM
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══ MODAL: GEAD-002-FORM (Transferir a Proyecto) ══ --}}
         <div class="modal fade" id="modalForm" data-backdrop="static" data-keyboard="false">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -409,7 +503,7 @@
             </div>
         </div>
 
-        {{-- ══ MODAL: GEAD-003-FORM ══ --}}
+        {{-- ══ MODAL: GEAD-003-FORM (Salida General) ══ --}}
         <div class="modal fade" id="modalForm003" data-backdrop="static" data-keyboard="false">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -581,7 +675,6 @@
                             <i class="fas fa-times mr-1"></i>Cancelar
                         </button>
                         <div>
-                            {{-- Solo PDF sin guardar y Guardar --}}
                             <button type="button" class="btn btn-info mr-2" onclick="guardar('pdf')">
                                 <i class="fas fa-file-pdf mr-1"></i>Generar PDF
                             </button>
@@ -633,6 +726,10 @@
             });
             $('#form003-departamento').select2({
                 theme: "bootstrap-5", dropdownParent: $('#modalForm003'),
+                language: { noResults: function () { return "No encontrado"; } }
+            });
+            $('#form001-departamento').select2({
+                theme: "bootstrap-5", dropdownParent: $('#modalForm001'),
                 language: { noResults: function () { return "No encontrado"; } }
             });
 
@@ -733,7 +830,8 @@
                 $('#pill-reserva').addClass('activo-reserva');
                 $('#seccion-proyecto-destino').hide();
                 $('#lblTipoMovimiento').html('<i class="fas fa-lock mr-1" style="color:#6f42c1"></i> Reserva de Material');
-                $('#btnAbrirForm').hide();
+                $('#btnAbrirForm').show();
+                $('#lblBtnForm').text('GEAD-001-FORM');
             }
 
             $('#matriz tbody tr').remove();
@@ -752,15 +850,21 @@
             if ($('#matriz > tbody > tr').length <= 0) {
                 toastr.error('Agregue al menos un material al detalle'); return;
             }
+
             if (tipoDestino === 'proyecto') {
                 var nombreProy = $('#select-proyecto option:selected').text();
                 var nombreDest = $('#select-proyecto-destino option:selected').text();
                 if (nombreDest && nombreDest !== 'Seleccionar proyecto destino…') nombreProy = nombreDest;
                 $('#form-nombre-proyecto').val(nombreProy);
                 $('#modalForm').modal('show');
+
             } else if (tipoDestino === 'general') {
                 $('#form003-tipodestino').val('');
                 $('#modalForm003').modal('show');
+
+            } else if (tipoDestino === 'reserva') {
+                $('#form001-proyecto-origen').val($('#select-proyecto option:selected').text());
+                $('#modalForm001').modal('show');
             }
         }
 
@@ -812,6 +916,37 @@
             toastr.success('Agregado al detalle');
         }
 
+        // ── GEAD-001-FORM PDF (Reserva) ───────────────────────────────────
+        function generarForm001PDF() {
+            var formDepto = $('#form001-departamento').val();
+            if (!formDepto || formDepto === '') { toastr.error('La Unidad Solicitante es requerida'); return; }
+
+            var materiales = [];
+            $('#matriz > tbody > tr').each(function () {
+                materiales.push({
+                    nombre:             $(this).find("input[type='text']").val(),
+                    cantidad:           $(this).find("input[name='salidaArray[]']").attr('data-cantidadSalida'),
+                    id_entrada_detalle: $(this).find("input[name='idmaterialArray[]']").attr('data-idmaterialArray')
+                });
+            });
+
+            var form = $('<form>', { method: 'POST', action: "{{ URL::to('admin/reporte/form001/reserva/preview') }}", target: '_blank' });
+            form.append($('<input>', { type: 'hidden', name: '_token',          value: "{{ csrf_token() }}" }));
+            form.append($('<input>', { type: 'hidden', name: 'idproy',          value: $('#select-proyecto').val() }));
+            form.append($('<input>', { type: 'hidden', name: 'nombre_origen',   value: $('#select-proyecto option:selected').text() }));
+            form.append($('<input>', { type: 'hidden', name: 'fecha',           value: document.getElementById('fecha').value }));
+            form.append($('<input>', { type: 'hidden', name: 'numero',          value: $('#form001-numero').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'proyecto_formul', value: $('#form001-proyecto-formul').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'justificacion',   value: $('#form001-justificacion').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'depto',           value: $('#form001-departamento option:selected').text() }));
+            form.append($('<input>', { type: 'hidden', name: 'nombre',          value: $('#form001-nombre').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'cargo',           value: $('#form001-cargo').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'observaciones',   value: $('#form001-observaciones').val().trim() }));
+            form.append($('<input>', { type: 'hidden', name: 'materiales',      value: JSON.stringify(materiales) }));
+            $('body').append(form); form.submit(); form.remove();
+        }
+
+        // ── GEAD-002-FORM PDF ─────────────────────────────────────────────
         function generarFormPDF() {
             var formDepto = $('#form-departamento').val();
             if (!formDepto || formDepto === '') { toastr.error('La Unidad Solicitante es requerida'); return; }
@@ -844,6 +979,7 @@
             $('body').append(form); form.submit(); form.remove();
         }
 
+        // ── GEAD-003-FORM PDF ─────────────────────────────────────────────
         function generarForm003PDF() {
             var formDepto = $('#form003-departamento').val();
             if (!formDepto || formDepto === '') { toastr.error('La Unidad Solicitante es requerida'); return; }
@@ -879,10 +1015,10 @@
 
             var labelsTipo = {
                 proyecto: 'Transferencia a Proyecto de Inversión Pública',
-                general:  '',
+                general:  'Salida General — Mantenimiento de Instalaciones',
                 reserva:  'Reserva de Material',
             };
-            var tipoLabel = labelsTipo[tipoDestino] || '';
+            var tipoLabel = labelsTipo[tipoDestino] || tipoDestino;
 
             if (tipoDestino === 'proyecto') {
                 var nombreProyDest = $('#select-proyecto-destino option:selected').text();
@@ -917,11 +1053,7 @@
             }
             if (!actaIdDepto || actaIdDepto === '') { toastr.error('La Unidad Solicitante es requerida'); return; }
 
-            if (accion === 'pdf') {
-                abrirPDFSinGuardar();
-                return;
-            }
-
+            if (accion === 'pdf') { abrirPDFSinGuardar(); return; }
             ejecutarGuardar(accion);
         }
 
@@ -980,7 +1112,6 @@
             axios.post(urlAdmin + '/admin/transferencia/material/xproyecto', formData)
                 .then((response) => {
                     closeLoading();
-
                     if (response.data.success === 1) {
                         toastr.error('Sin ítems en el contenedor');
                     } else if (response.data.success === 3) {
