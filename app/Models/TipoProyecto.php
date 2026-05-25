@@ -19,4 +19,6 @@ class TipoProyecto extends Model
     {
         return $this->hasMany(Transferencia::class, 'id_tipoproyecto');
     }
+
+
 }

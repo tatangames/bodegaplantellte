@@ -1095,12 +1095,46 @@
             openLoading();
 
             var formData = new FormData();
-            formData.append('fecha',                document.getElementById('fecha').value);
-            formData.append('proyecto_cerrado',     $('#select-proyecto').val());
+            formData.append('fecha',            document.getElementById('fecha').value);
+            formData.append('proyecto_cerrado', $('#select-proyecto').val());
+            formData.append('descripcion',      document.getElementById('descripcion').value);
+            formData.append('tipo_destino',     tipoDestino);
+            formData.append('contenedorArray',  JSON.stringify(contenedorArray));
+
+            // ── RESERVA — endpoint propio, sin datos de acta ─────────────
+            if (tipoDestino === 'reserva') {
+                axios.post(urlAdmin + '/admin/reservas/crear', formData)
+                    .then((response) => {
+                        closeLoading();
+                        if (response.data.success === 1) {
+                            toastr.error('Sin ítems en el contenedor');
+                        } else if (response.data.success === 3) {
+                            Swal.fire({
+                                title: 'Cantidad no disponible',
+                                html: '<b>' + response.data.nombre_material + '</b><br><br>' +
+                                    'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
+                                    'Disponible libre: <b>' + response.data.disponible + '</b>',
+                                icon: 'warning', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                            });
+                        } else if (response.data.success === 10) {
+                            Swal.fire({
+                                title: 'Materiales Reservados',
+                                icon: 'success',
+                                allowOutsideClick: false,
+                                confirmButtonColor: '#6f42c1',
+                                confirmButtonText: 'Aceptar'
+                            }).then((r) => { if (r.isConfirmed) location.reload(); });
+                        } else {
+                            toastr.error('Error al guardar reserva');
+                        }
+                    })
+                    .catch(() => { toastr.error('Error al guardar reserva'); closeLoading(); });
+
+                return; // importante: no continuar con el flujo de abajo
+            }
+
+            // ── PROYECTO / GENERAL — endpoint original con datos de acta ──
             formData.append('proyecto_destino',     $('#select-proyecto-destino').val() || '');
-            formData.append('descripcion',          document.getElementById('descripcion').value);
-            formData.append('tipo_destino',         tipoDestino);
-            formData.append('contenedorArray',      JSON.stringify(contenedorArray));
             formData.append('acta_numero',          $('#acta-numero').val().trim());
             formData.append('acta_referencia',      $('#acta-referencia').val().trim());
             formData.append('acta_id_departamento', $('#acta-departamento').val() || '');
@@ -1126,7 +1160,6 @@
                         var titulos = {
                             proyecto: 'Transferencia Registrada',
                             general:  'Salida General Registrada',
-                            reserva:  'Materiales Reservados'
                         };
                         Swal.fire({
                             title: titulos[tipoDestino] || 'Guardado',
@@ -1134,9 +1167,7 @@
                             allowOutsideClick: false,
                             confirmButtonColor: '#28a745',
                             confirmButtonText: 'Aceptar'
-                        }).then((r) => {
-                            if (r.isConfirmed) location.reload();
-                        });
+                        }).then((r) => { if (r.isConfirmed) location.reload(); });
                     } else {
                         toastr.error('Error al guardar');
                     }

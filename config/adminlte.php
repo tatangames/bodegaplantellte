@@ -408,6 +408,11 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.historial.salidas.index',
                 ],
+                [
+                    'text' => 'Transferencias',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.historial.transferencias.index',
+                ],
             ],
         ],
 

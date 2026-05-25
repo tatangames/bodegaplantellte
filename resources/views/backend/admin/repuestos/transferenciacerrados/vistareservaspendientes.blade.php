@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Reservas Pendientes')
+@section('title', 'Reservas')
 
 @section('content_header')
-    <h1>Reservas Pendientes</h1>
+    <h1>Reservas</h1>
 @stop
 
 @section('plugins.Sweetalert2', true)
@@ -77,6 +77,38 @@
 
         .destino-select { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; }
         .proyecto-select { display: none; margin-top: 4px; font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; width: 100%; }
+
+        tr.fila-liberar { background: #fff4f4 !important; }
+        tr.fila-liberar td { color: #b32d2d; }
+
+        tr.grupo-header td {
+            background: #eef1f8 !important;
+            border-top: 2px solid #6f42c1 !important;
+            padding: 10px 12px !important;
+        }
+        .grupo-titulo {
+            font-size: 13px; font-weight: 700; color: #1a3a6b;
+            text-transform: uppercase; letter-spacing: .03em;
+        }
+        .grupo-contador {
+            background: #6f42c1; color: #fff; border-radius: 12px;
+            padding: 1px 9px; font-size: 11px; font-weight: 700; margin-left: 8px;
+        }
+        .grupo-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .grupo-acciones label {
+            margin: 0; font-size: 11px; font-weight: 700;
+            color: #6b7a99; text-transform: uppercase;
+        }
+        .grupo-destino-select,
+        .grupo-proyecto-select {
+            font-size: 12px; padding: 4px 6px; border-radius: 6px;
+            border: 1px solid #c3b3e0; min-width: 180px;
+        }
+        .grupo-proyecto-select { display: none; }
+        .btn-toggle-grupo {
+            background: none; border: none; color: #6f42c1;
+            font-size: 13px; cursor: pointer; padding: 0 4px;
+        }
     </style>
 
     <div id="divcontenedor" style="display:none">
@@ -112,13 +144,15 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="card card-info">
-                    <div class="seccion-header" style="display:flex; justify-content:space-between; align-items:center">
-                        <h3><i class="fas fa-lock mr-2"></i>Reservas Pendientes de Despacho</h3>
+                    <div class="seccion-header"
+                         style="display:flex; justify-content:space-between; align-items:center">
+                        <h3 style="margin:0;">
+                            <i class="fas fa-lock mr-2"></i>
+                            Reservas Pendientes de Despacho
+                        </h3>
                         <span id="contador-reservas"
                               style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
-                                 padding:2px 12px; font-size:12px; font-weight:700">
-                        Cargando…
-                    </span>
+                                     padding:2px 12px; font-size:12px; font-weight:700"></span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -129,12 +163,13 @@
                                     <th style="width:4%">
                                         <input type="checkbox" id="chkTodos" onclick="toggleTodos(this)">
                                     </th>
-                                    <th style="width:20%">Material</th>
-                                    <th style="width:15%">Proyecto Origen</th>
-                                    <th style="width:8%">Cant.</th>
-                                    <th style="width:12%">Fecha Reserva</th>
-                                    <th style="width:20%">Motivo</th>
-                                    <th style="width:21%">Destino</th>
+                                    <th style="width:18%">Material</th>
+                                    <th style="width:13%">Proyecto Origen</th>
+                                    <th style="width:7%">Cant.</th>
+                                    <th style="width:11%">Monto</th>
+                                    <th style="width:11%">Fecha Reserva</th>
+                                    <th style="width:17%">Motivo</th>
+                                    <th style="width:19%">Destino</th>
                                 </tr>
                                 </thead>
                                 <tbody id="tbodyReservas"></tbody>
@@ -143,9 +178,11 @@
                     </div>
                     <div class="card-footer d-flex justify-content-between align-items-center"
                          style="border-top:2px solid #e8eef8; background:#f8faff; border-radius:0 0 10px 10px">
-                        <small class="text-muted">Seleccione las reservas a despachar y defina el destino de cada una</small>
+                        <small class="text-muted">
+                            Defina el destino por grupo o por fila, luego procese las reservas seleccionadas
+                        </small>
                         <button type="button" class="btn-despachar" onclick="preguntaDespachar()">
-                            <i class="fas fa-paper-plane mr-1"></i> Despachar Seleccionados
+                            <i class="fas fa-paper-plane mr-1"></i> Procesar Seleccionados
                         </button>
                     </div>
                 </div>
@@ -164,8 +201,8 @@
     <script src="{{ asset('js/select2.min.js') }}"></script>
 
     <script>
-        // Proyectos activos disponibles para destino
         var proyectosActivos = @json($proyectosActivos);
+        var opcionesProyecto = "";
 
         $(document).ready(function () {
             document.getElementById("divcontenedor").style.display = "block";
@@ -173,10 +210,15 @@
             var hoy = new Date();
             document.getElementById('fecha-despacho').value = hoy.toJSON().slice(0, 10);
 
+            opcionesProyecto = "<option value='0' disabled selected>Seleccionar proyecto…</option>";
+            $.each(proyectosActivos, function (i, p) {
+                opcionesProyecto += "<option value='" + p.id + "'>" + p.nombre + "</option>";
+            });
+
             cargarReservas();
         });
 
-        // ── Cargar reservas pendientes ────────────────────────────────────
+        // ── Cargar solo reservas pendientes ───────────────────────────────
         function cargarReservas() {
             axios.post(urlAdmin + '/admin/reservas/listar')
                 .then((response) => {
@@ -185,74 +227,189 @@
                         return;
                     }
 
-                    var lista = response.data.reservas;
-                    $('#tbodyReservas').empty();
-                    $('#contador-reservas').text(lista.length + (lista.length === 1 ? ' reserva' : ' reservas'));
-
-                    if (lista.length === 0) {
-                        $('#tbodyReservas').append(
-                            "<tr><td colspan='7' class='text-center text-muted py-4'>" +
-                            "<i class='fas fa-check-circle mr-2' style='color:#28a745'></i>" +
-                            "No hay reservas pendientes</td></tr>"
-                        );
-                        return;
-                    }
-
-                    // Armar opciones de proyectos para select
-                    var opcionesProyecto = "<option value='0' disabled selected>Seleccionar proyecto…</option>";
-                    $.each(proyectosActivos, function (i, p) {
-                        opcionesProyecto += "<option value='" + p.id + "'>" + p.id + " — " + p.nombre + "</option>";
+                    // Solo pendientes (despachado = 0)
+                    var lista = response.data.reservas.filter(function (r) {
+                        return Number(r.despachado) === 0;
                     });
 
-                    $.each(lista, function (i, r) {
-                        var fechaFmt = r.fecha_reserva
-                            ? new Date(r.fecha_reserva).toLocaleDateString('es-SV')
-                            : '—';
-
-                        var fila = "<tr data-id='" + r.id + "'>" +
-                            "<td style='text-align:center'>" +
-                            "<input type='checkbox' class='chk-reserva' data-id='" + r.id + "'>" +
-                            "</td>" +
-                            "<td style='font-size:12px'>" + (r.nombre_material ?? '—') + "</td>" +
-                            "<td style='font-size:12px'>" + (r.nombre_proyecto_origen ?? '—') + "</td>" +
-                            "<td style='text-align:center; font-weight:700'>" + r.cantidad + "</td>" +
-                            "<td style='font-size:12px'>" + fechaFmt + "</td>" +
-                            "<td style='font-size:12px'>" + (r.descripcion ?? '—') + "</td>" +
-                            "<td>" +
-                            // Select tipo destino
-                            "<select class='destino-select select-tipo' style='width:100%' " +
-                            "onchange=\"cambiarTipoDestino(this, " + r.id + ")\">" +
-                            "<option value=''>— Elegir destino —</option>" +
-                            "<option value='proyecto'>Transferir a Proyecto</option>" +
-                            "<option value='general'>Salida General</option>" +
-                            "</select>" +
-                            // Select proyecto (aparece si elige 'proyecto')
-                            "<select class='proyecto-select select-proyecto' id='proy-" + r.id + "'>" +
-                            opcionesProyecto +
-                            "</select>" +
-                            "</td>" +
-                            "</tr>";
-
-                        $('#tbodyReservas').append(fila);
-                    });
+                    renderTabla(lista);
                 })
                 .catch(() => { toastr.error('Error al cargar reservas'); });
         }
 
-        // ── Mostrar/ocultar select de proyecto según tipo ─────────────────
+        // ── Renderizar tabla ──────────────────────────────────────────────
+        function renderTabla(lista) {
+            $('#tbodyReservas').empty();
+            $('#chkTodos').prop('checked', false);
+            $('#contador-reservas').text(lista.length + (lista.length === 1 ? ' reserva' : ' reservas'));
+
+            if (lista.length === 0) {
+                $('#tbodyReservas').append(
+                    "<tr><td colspan='8' class='text-center text-muted py-4'>" +
+                    "<i class='fas fa-check-circle mr-2' style='color:#28a745'></i>" +
+                    "No hay reservas pendientes</td></tr>"
+                );
+                return;
+            }
+
+            // Agrupar por proyecto origen
+            var grupos = {};
+            $.each(lista, function (i, r) {
+                var clave = r.nombre_proyecto_origen ?? 'Sin proyecto';
+                if (!grupos[clave]) grupos[clave] = [];
+                grupos[clave].push(r);
+            });
+
+            var indiceGrupo = 0;
+
+            $.each(grupos, function (nombreProyecto, reservasGrupo) {
+                indiceGrupo++;
+                var gid = 'grupo-' + indiceGrupo;
+
+                var totalGrupo = 0;
+                $.each(reservasGrupo, function (j, r) {
+                    totalGrupo += parseFloat(r.precio ?? 0) * parseFloat(r.cantidad ?? 0);
+                });
+                var totalGrupoFmt = totalGrupo.toLocaleString('es-SV', {
+                    minimumFractionDigits: 2, maximumFractionDigits: 2
+                });
+
+                // ── Cabecera de grupo ────────────────────────────────────
+                var headerRow =
+                    "<tr class='grupo-header' data-grupo='" + gid + "'>" +
+                    "<td colspan='8'>" +
+                    "<div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px'>" +
+                    "<div style='display:flex; align-items:center'>" +
+                    "<button type='button' class='btn-toggle-grupo' " +
+                    "onclick=\"toggleGrupo('" + gid + "', this)\">" +
+                    "<i class='fas fa-chevron-down'></i></button>" +
+                    "<input type='checkbox' class='chk-grupo' " +
+                    "onclick=\"toggleSeleccionGrupo('" + gid + "', this)\" " +
+                    "style='margin:0 8px'>" +
+                    "<span class='grupo-titulo'><i class='fas fa-folder-open mr-1'></i>" +
+                    nombreProyecto + "</span>" +
+                    "<span class='grupo-contador'>" + reservasGrupo.length + "</span>" +
+                    "<span style='margin-left:10px; font-size:12px; color:#6f42c1; font-weight:700'>" +
+                    "Total: $" + totalGrupoFmt + "</span>" +
+                    "</div>" +
+                    "<div class='grupo-acciones'>" +
+                    "<label><i class='fas fa-magic mr-1'></i>Aplicar a todo el grupo:</label>" +
+                    "<select class='grupo-destino-select' " +
+                    "onchange=\"aplicarDestinoGrupo('" + gid + "', this)\">" +
+                    "<option value=''>— Elegir destino —</option>" +
+                    "<option value='proyecto'>Transferir a Proyecto</option>" +
+                    "<option value='general'>Salida General</option>" +
+                    "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
+                    "</select>" +
+                    "<select class='grupo-proyecto-select' id='gproy-" + gid + "' " +
+                    "onchange=\"aplicarProyectoGrupo('" + gid + "', this)\">" +
+                    opcionesProyecto +
+                    "</select>" +
+                    "</div>" +
+                    "</div></td></tr>";
+
+                $('#tbodyReservas').append(headerRow);
+
+                // ── Filas de reservas ────────────────────────────────────
+                $.each(reservasGrupo, function (j, r) {
+                    var fechaFmt = r.fecha_reserva
+                        ? new Date(r.fecha_reserva).toLocaleDateString('es-SV')
+                        : '—';
+
+                    var precio   = parseFloat(r.precio ?? 0);
+                    var monto    = precio * parseFloat(r.cantidad ?? 0);
+                    var montoFmt = monto.toLocaleString('es-SV', {
+                        minimumFractionDigits: 2, maximumFractionDigits: 2
+                    });
+
+                    var fila =
+                        "<tr data-id='" + r.id + "' class='fila-reserva' data-grupo='" + gid + "'>" +
+                        "<td style='text-align:center'>" +
+                        "<input type='checkbox' class='chk-reserva' data-grupo='" + gid + "' data-id='" + r.id + "'>" +
+                        "</td>" +
+                        "<td style='font-size:12px'>" + (r.nombre_material ?? '—') + "</td>" +
+                        "<td style='font-size:12px'>" + (r.nombre_proyecto_origen ?? '—') + "</td>" +
+                        "<td style='text-align:center; font-weight:700'>" + r.cantidad + "</td>" +
+                        "<td style='text-align:right; font-weight:700; font-size:12px'>$" + montoFmt + "</td>" +
+                        "<td style='font-size:12px'>" + fechaFmt + "</td>" +
+                        "<td style='font-size:12px'>" + (r.descripcion ?? '—') + "</td>" +
+                        "<td>" +
+                        "<select class='destino-select select-tipo' style='width:100%' " +
+                        "onchange=\"cambiarTipoDestino(this, " + r.id + ")\">" +
+                        "<option value=''>— Elegir destino —</option>" +
+                        "<option value='proyecto'>Transferir a Proyecto</option>" +
+                        "<option value='general'>Salida General</option>" +
+                        "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
+                        "</select>" +
+                        "<select class='proyecto-select select-proyecto' id='proy-" + r.id + "'>" +
+                        opcionesProyecto +
+                        "</select>" +
+                        "</td>" +
+                        "</tr>";
+
+                    $('#tbodyReservas').append(fila);
+                });
+            });
+        }
+
+        // ── Colapsar/expandir grupo ───────────────────────────────────────
+        function toggleGrupo(gid, btn) {
+            $(".fila-reserva[data-grupo='" + gid + "']").toggle();
+            $(btn).find('i').toggleClass('fa-chevron-down fa-chevron-right');
+        }
+
+        function toggleSeleccionGrupo(gid, chk) {
+            $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', chk.checked);
+        }
+
+        function toggleTodos(chk) {
+            $('.chk-reserva').prop('checked', chk.checked);
+            $('.chk-grupo').prop('checked', chk.checked);
+        }
+
+        // ── Asignación masiva de destino por grupo ────────────────────────
+        function aplicarDestinoGrupo(gid, selectEl) {
+            var valor       = $(selectEl).val();
+            var gproySelect = $('#gproy-' + gid);
+
+            if (valor === 'proyecto') {
+                gproySelect.show();
+            } else {
+                gproySelect.hide().val('0');
+            }
+            if (!valor) return;
+
+            $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
+                var idReserva  = $(this).data('id');
+                var filaSelect = $(this).find('.select-tipo');
+                filaSelect.val(valor);
+                cambiarTipoDestino(filaSelect[0], idReserva);
+            });
+            $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
+        }
+
+        function aplicarProyectoGrupo(gid, selectEl) {
+            var idProyecto = $(selectEl).val();
+            if (!idProyecto || idProyecto === '0') return;
+
+            $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
+                if ($(this).find('.select-tipo').val() === 'proyecto') {
+                    $(this).find('.select-proyecto').val(idProyecto).show();
+                }
+            });
+        }
+
         function cambiarTipoDestino(selectEl, idReserva) {
-            var val = $(selectEl).val();
+            var val        = $(selectEl).val();
+            var fila       = $(selectEl).closest('tr');
             var proySelect = $('#proy-' + idReserva);
+
             if (val === 'proyecto') {
                 proySelect.show();
             } else {
                 proySelect.hide().val('0');
             }
-        }
-
-        // ── Seleccionar todos ─────────────────────────────────────────────
-        function toggleTodos(chk) {
-            $('.chk-reserva').prop('checked', chk.checked);
+            fila.toggleClass('fila-liberar', val === 'liberar');
         }
 
         // ── Confirmar despacho ────────────────────────────────────────────
@@ -264,13 +421,11 @@
                 return;
             }
 
-            // Validar que todos tengan destino elegido
             var valido = true;
             seleccionados.each(function () {
-                var idReserva  = $(this).data('id');
-                var fila       = $(this).closest('tr');
-                var tipo       = fila.find('.select-tipo').val();
-                var proyDest   = fila.find('.select-proyecto').val();
+                var fila     = $(this).closest('tr');
+                var tipo     = fila.find('.select-tipo').val();
+                var proyDest = fila.find('.select-proyecto').val();
 
                 if (!tipo) {
                     toastr.error('Defina el destino de todas las reservas seleccionadas');
@@ -283,22 +438,31 @@
                     return false;
                 }
             });
-
             if (!valido) return;
 
+            var hayLiberadas = false;
+            seleccionados.each(function () {
+                if ($(this).closest('tr').find('.select-tipo').val() === 'liberar') {
+                    hayLiberadas = true;
+                }
+            });
+
+            var textoConfirm = hayLiberadas
+                ? 'Algunas reservas se cancelarán (no se despacharán ni generarán salida) y las demás generarán sus salidas correspondientes.'
+                : 'Se generarán las salidas correspondientes y las reservas quedarán marcadas como despachadas.';
+
             Swal.fire({
-                title: '¿Despachar reservas?',
-                text:  'Se generarán las salidas correspondientes y las reservas quedarán marcadas como despachadas.',
+                title: '¿Procesar reservas?',
+                text:  textoConfirm,
                 icon:  'question',
                 showCancelButton:   true,
                 confirmButtonColor: '#6f42c1',
                 cancelButtonColor:  '#d33',
                 cancelButtonText:   'Cancelar',
-                confirmButtonText:  'Sí, despachar'
+                confirmButtonText:  'Sí, procesar'
             }).then((result) => { if (result.isConfirmed) ejecutarDespacho(); });
         }
 
-        // ── Ejecutar despacho ─────────────────────────────────────────────
         function ejecutarDespacho() {
             var fecha       = document.getElementById('fecha-despacho').value;
             var descripcion = document.getElementById('descripcion-despacho').value;
@@ -328,11 +492,10 @@
             axios.post(urlAdmin + '/admin/reservas/despachar', formData)
                 .then((response) => {
                     closeLoading();
-
                     if (response.data.success === 10) {
                         Swal.fire({
-                            title: 'Despacho Exitoso',
-                            text:  'Las reservas han sido despachadas correctamente.',
+                            title: 'Proceso Exitoso',
+                            text:  'Las reservas seleccionadas han sido procesadas correctamente.',
                             icon:  'success',
                             allowOutsideClick:  false,
                             confirmButtonColor: '#6f42c1',

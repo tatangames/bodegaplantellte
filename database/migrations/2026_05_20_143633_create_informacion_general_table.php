@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('informacion_general', function (Blueprint $table) {
             $table->id();
 
-            // REPORTE PX DISTANCIA PARA REPORTE DE SOBRANTES
-            $table->integer('px_sobrantes');
+            // REPORTE PIXELES DISTANCIAS
+            $table->integer('px_firmas');
+            $table->integer('px_observaciones');
         });
     }
 

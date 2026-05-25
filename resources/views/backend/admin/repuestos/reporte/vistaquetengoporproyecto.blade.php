@@ -210,6 +210,21 @@
                                     @endforeach
                                 </select>
 
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label class="field-label">
+                                            <i class="fas fa-calendar-alt mr-1"></i>Fecha Desde
+                                        </label>
+                                        <input type="date" class="form-control" id="destino-fecha-desde">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="field-label">
+                                            <i class="fas fa-calendar-alt mr-1"></i>Fecha Hasta
+                                        </label>
+                                        <input type="date" class="form-control" id="destino-fecha-hasta">
+                                    </div>
+                                </div>
+
                                 <div class="mt-3" style="display:flex; gap:10px; flex-wrap:wrap;">
                                     <button type="button" onclick="generarPdfDestino('proyecto')" class="btn-pdf verde">
                                         <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
@@ -275,7 +290,25 @@
         function generarPdfDestino(tipo) {
             var idtrans = $('#select-proyecto-destino').val();
             if (!idtrans) { toastr.error('Proyecto es requerido'); return; }
-            window.open("{{ URL::to('admin/reporte/inventario/destino/sobrantes') }}/" + idtrans + "/" + tipo);
+
+            var desde = $('#destino-fecha-desde').val();
+            var hasta = $('#destino-fecha-hasta').val();
+
+            if (!desde || !hasta) {
+                toastr.error('Debe indicar la fecha desde y hasta');
+                return;
+            }
+            if (desde > hasta) {
+                toastr.error('La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+                return;
+            }
+
+            // Las fechas se envían como parámetros de query string
+            var url = "{{ URL::to('admin/reporte/inventario/destino/sobrantes') }}/"
+                + idtrans + "/" + tipo
+                + "?desde=" + desde + "&hasta=" + hasta;
+
+            window.open(url);
         }
     </script>
 @endsection

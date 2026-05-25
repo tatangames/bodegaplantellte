@@ -13,11 +13,28 @@ return new class extends Migration
     {
         Schema::create('transferencia', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('id_tipoproyecto')->unsigned();
+
+            $table->bigInteger('id_tipoproyecto_origen')->unsigned()->nullable()->after('id_tipoproyecto');
+
+            $table->bigInteger('id_salida')->unsigned()->nullable();
+            $table->bigInteger('id_entrada')->unsigned()->nullable();
+
+            $table->bigInteger('id_tipoproyecto')->unsigned()->nullable();
             $table->date('fecha');
             $table->string('descripcion', 800)->nullable();
             $table->string('documento', 100)->nullable();
 
+            $table->enum('tipo_salida', [
+                'proyecto',
+                'general'
+            ])->default('proyecto');
+
+
+
+
+            $table->foreign('id_salida')->references('id')->on('salidas');
+            $table->foreign('id_entrada')->references('id')->on('entradas');
+            $table->foreign('id_tipoproyecto_origen')->references('id')->on('tipoproyecto');
             $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
         });
     }

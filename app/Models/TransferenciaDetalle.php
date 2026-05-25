@@ -16,4 +16,10 @@ class TransferenciaDetalle extends Model
     {
         return $this->belongsTo(EntradasDetalle::class, 'id_entrada_detalle');
     }
+
+    public function transferencia()
+    {
+        return $this->belongsTo(Transferencia::class, 'id_transferencia');
+    }
+
 }

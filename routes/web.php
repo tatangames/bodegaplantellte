@@ -94,8 +94,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/inventario/nuevo', [RepuestosController::class, 'nuevoMaterial']);
     Route::post('/admin/inventario/informacion', [RepuestosController::class, 'informacionMaterial']);
     Route::post('/admin/inventario/editar', [RepuestosController::class, 'editarMaterial']);
-    Route::post('/admin/informacion/herramienta/descartar', [RepuestosController::class, 'infoHerramientaDescartar']);
-    Route::post('/admin/descartar/herramienta/inventario', [RepuestosController::class, 'descartarHerramientaInventario']);
 
     // --- REGISTRO DE UN PROYECTO ---
     Route::get('/admin/proyecto/index', [TipoProyectoController::class,'index'])->name('admin.tiposproyecto.index');
@@ -149,6 +147,34 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/transferencia/material/xproyecto', [SalidasController::class,'retirarMaterialDeProyectosCerrados']);
     // Ruta nueva para cargar materiales del proyecto cerrado
     Route::post('/admin/transferencia/materiales/cerrado', [SalidasController::class, 'materialesDisponiblesCerrado']);
+    // Agregar esta ruta junto a las demás de reservas
+    Route::post('/admin/reservas/crear', [ReservasController::class, 'crearReserva']);
+
+
+    // --- RESERVAS ---
+    Route::get('/admin/reservas/index', [ReservasController::class,'indexReservasPendientes'])->name('admin.reservas.index');
+    Route::post('/admin/reservas/listar', [ReservasController::class, 'listar']);
+    Route::post('/admin/reservas/despachar', [ReservasController::class, 'despachar']);
+
+
+
+
+
+
+
+
+    // --- HISTORIAL / TRANSFERENCIAS ---
+    Route::get('/admin/historial/transferencias', [HistorialController::class, 'indexHistorialTransferencias'])->name('admin.historial.transferencias.index');
+    Route::get('/admin/historial/transferencias/tabla', [HistorialController::class, 'tablaHistorialTransferencias']);
+    Route::post('/admin/historial/transferencias/informacion', [HistorialController::class, 'informacionTransferencia']);
+    Route::post('/admin/historial/transferencias/eliminar', [HistorialController::class, 'eliminarTransferencia']);
+    Route::post('/admin/historial/transferencias/detalle', [HistorialController::class, 'detalleTransferencia']);
+
+
+
+
+
+
 
 
 
@@ -174,11 +200,6 @@ Route::middleware('auth:admin')->group(function () {
 
 
 
-
-    // --- RESERVAS ---
-    Route::get('/admin/reservas/index', [ReservasController::class,'indexReservasPendientes'])->name('admin.reservas.index');
-    Route::post('/admin/reservas/listar', [ReservasController::class, 'listar']);
-    Route::post('/admin/reservas/despachar', [ReservasController::class, 'despachar']);
 
 
 

@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Entradas;
 use App\Models\EntradasDetalle;
 use App\Models\Materiales;
+use App\Models\Reserva;
 use App\Models\Salidas;
 use App\Models\SalidasDetalle;
 use App\Models\TipoProyecto;
 use App\Models\Transferencia;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class HistorialController extends Controller
@@ -400,55 +403,280 @@ class HistorialController extends Controller
 
 
 
-    /*public function indexHistorialRepuestosSalida(){
 
-        return view('backend.admin.historial.salidarepuesto.vistasalidarepuesto');
+
+
+    // ── Historial Transferencias ──────────────────────────────────────────────────
+
+    public function indexHistorialTransferencias()
+    {
+        // Solo proyectos que tienen al menos una transferencia registrada
+        $arrayProyectos = TipoProyecto::whereHas('transferencia')
+            ->orderBy('nombre')
+            ->get();
+
+        return view('backend.admin.historial.transferencias.vistahistorialtransferencia',
+            compact('arrayProyectos'));
     }
 
 
-    public function tablaHistorialRepuestosSalida()
+    public function tablaHistorialTransferencias(Request $request)
     {
-        $lista = Salidas::with('tipoproyecto')
-            ->orderBy('fecha', 'DESC')
+        $arrayTransferencias = Transferencia::with([
+            'tipoproyecto',         // destino
+            'tipoproyectoOrigen',   // origen
+        ])
+
+            // Proyecto (filtra por ORIGEN)
+            ->when($request->proyecto, function ($q) use ($request) {
+
+                // especial: salida general
+                if ($request->proyecto == 'general') {
+                    $q->where('tipo_salida', 'general');
+                } else {
+                    $q->where(
+                        'id_tipoproyecto_origen',
+                        $request->proyecto
+                    );
+                }
+            })
+
+            // Tipo de salida (proyecto | general)
+            ->when($request->tipo_salida, function ($q) use ($request) {
+                $q->where(
+                    'tipo_salida',
+                    $request->tipo_salida
+                );
+            })
+
+            // Fecha desde
+            ->when($request->fecha_desde, function ($q) use ($request) {
+                $q->whereDate(
+                    'fecha',
+                    '>=',
+                    $request->fecha_desde
+                );
+            })
+
+            // Fecha hasta
+            ->when($request->fecha_hasta, function ($q) use ($request) {
+                $q->whereDate(
+                    'fecha',
+                    '<=',
+                    $request->fecha_hasta
+                );
+            })
+
+            // Material
+            ->when($request->material, function ($q) use ($request) {
+
+                $busqueda = '%' . trim($request->material) . '%';
+
+                $q->whereHas('detalle', function ($q2) use ($busqueda) {
+                    $q2->where(
+                        'nombre_material',
+                        'LIKE',
+                        $busqueda
+                    );
+                });
+            })
+
+            // Documento
+            ->when($request->documento, function ($q) use ($request) {
+
+                $q->where(
+                    'documento',
+                    'LIKE',
+                    '%' . trim($request->documento) . '%'
+                );
+            })
+
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
             ->get()
-            ->map(function ($dato) {
-                $dato->fechaFormato = Carbon::parse($dato->fecha)->format('d-m-Y');
-                $dato->nomproy      = optional($dato->tipoproyecto)->nombre ?? '-';
-                return $dato;
+
+            ->map(function ($item) {
+
+                $item->fecha_fmt = date(
+                    'd/m/Y',
+                    strtotime($item->fecha)
+                );
+
+                // Proyecto de ORIGEN (de donde vino el material)
+                $item->nombre_origen =
+                    $item->tipoproyectoOrigen?->nombre
+                    ?? '—';
+
+                // Proyecto de DESTINO (a donde se mandó)
+                $item->nombre_destino =
+                    $item->tipo_salida === 'general'
+                        ? 'Mantenimiento de instalaciones'
+                        : ($item->tipoproyecto?->nombre ?? '—');
+
+                return $item;
             });
 
-        return view('backend.admin.historial.salidarepuesto.tablasalidarepuesto', compact('lista'));
+        return view(
+            'backend.admin.historial.transferencias.tablahistorialtransferencia',
+            compact('arrayTransferencias')
+        );
     }
 
-    public function detalleHistorialSalida($id)
-    {
-        $salida = Salidas::with('tipoproyecto')->findOrFail($id);
 
-        return view('backend.admin.historial.salidarepuesto.detalle', compact('salida'));
+    public function informacionTransferencia(Request $request)
+    {
+        $transferencia = Transferencia::find($request->id);
+
+        if (!$transferencia) {
+            return response()->json(['success' => 0]);
+        }
+
+        return response()->json([
+            'success'       => 1,
+            'transferencia' => [
+                'id'          => $transferencia->id,
+                'fecha'       => $transferencia->fecha,
+                'descripcion' => $transferencia->descripcion,
+                'documento'   => $transferencia->documento,
+            ]
+        ]);
     }
 
-    public function tablaDetalleHistorialSalida($id)
+    public function eliminarTransferencia(Request $request)
     {
-        $lista = DB::table('salidas_detalle as sd')
-            ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')
-            ->join('materiales as m', 'm.id', '=', 'ed.id_material')
-            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
-            ->where('sd.id_salida', $id)
-            ->select(
-                'm.nombre as nommaterial',
-                'um.nombre as medida',
-                'sd.cantidad_salida',
-                'ed.precio'
-            )
+        $transferencia = Transferencia::find($request->id);
+
+        if (!$transferencia) {
+            return response()->json(['success' => 0]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $idSalida  = $transferencia->id_salida;
+            $idEntrada = $transferencia->id_entrada;
+
+            // ==========================================================
+            // 1) VALIDACION: el material que entro al proyecto destino
+            //    NO debe haber sido usado todavia.
+            //    Si ya tiene salidas o reservas, no se puede deshacer.
+            // ==========================================================
+            if ($idEntrada) {
+
+                $detallesEntrada = EntradasDetalle::where(
+                    'id_entradas',
+                    $idEntrada
+                )->get();
+
+                foreach ($detallesEntrada as $entDet) {
+
+                    $usado = SalidasDetalle::where(
+                        'id_entrada_detalle',
+                        $entDet->id
+                    )->sum('cantidad_salida');
+
+                    $reservado = Reserva::where(
+                        'id_entrada_detalle',
+                        $entDet->id
+                    )->sum('cantidad');
+
+                    if ($usado > 0 || $reservado > 0) {
+                        DB::rollback();
+                        return response()->json([
+                            'success'         => 2,
+                            'nombre_material' => $entDet->nombre,
+                        ]);
+                    }
+                }
+            }
+
+            // ==========================================================
+            // 2) BORRAR SALIDA (la del proyecto cerrado / origen)
+            //    Primero los detalles, luego la cabecera.
+            // ==========================================================
+            if ($idSalida) {
+                SalidasDetalle::where('id_salida', $idSalida)->delete();
+                Salidas::where('id', $idSalida)->delete();
+            }
+
+            // ==========================================================
+            // 3) BORRAR ENTRADA (la del proyecto destino)
+            //    Solo existe en transferencia a proyecto.
+            // ==========================================================
+            if ($idEntrada) {
+                EntradasDetalle::where('id_entradas', $idEntrada)->delete();
+                Entradas::where('id', $idEntrada)->delete();
+            }
+
+            // ==========================================================
+            // 4) BORRAR EL HISTORIAL (transferencia + detalle)
+            // ==========================================================
+            $transferencia->detalle()->delete();
+            $transferencia->delete();
+
+            DB::commit();
+
+            return response()->json(['success' => 1]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollback();
+
+            Log::error(
+                'eliminarTransferencia: ' . $e->getMessage()
+            );
+
+            return response()->json(['success' => 99]);
+        }
+    }
+
+    public function detalleTransferencia(Request $request)
+    {
+        $transferencia = Transferencia::find($request->id);
+
+        if (!$transferencia) {
+            return response()->json(['success' => 0]);
+        }
+
+        $detalle = $transferencia->detalle()
+            ->with([
+                // Cargamos entradaDetalle → material → objetoEspecifico → cuenta → rubro
+                'entradaDetalle.material.objetoEspecifico.cuenta'
+            ])
             ->get()
-            ->map(function ($fila) {
-                $fila->precioFormat = '$' . number_format($fila->precio, 2, '.', ',');
-                return $fila;
+            ->map(function ($item) {
+                $ed       = $item->entradaDetalle;
+                $material = $ed?->material;
+                $objEsp   = $material?->objetoEspecifico;
+
+                return [
+                    // nombre_material guardado en transferencia_detalle como snapshot
+                    // si está vacío caemos al nombre vivo del material
+                    'nombre_material'   => $item->nombre_material
+                        ?: ($material?->nombre ?? '—'),
+                    'objeto_especifico' => $objEsp
+                        ? $objEsp->codigo . ' — ' . $objEsp->nombre
+                        : '—',
+                    'cantidad_sobrante' => $item->cantidad_sobrante,
+                    'precio'            => number_format($item->precio, 4),
+                ];
             });
 
-        return view('backend.admin.historial.salidarepuesto.tabladetalle', compact('lista'));
+        return response()->json([
+            'success' => 1,
+            'detalle' => $detalle,
+        ]);
     }
-*/
+
+
+
+
+
+
+
+
+
 
 
 

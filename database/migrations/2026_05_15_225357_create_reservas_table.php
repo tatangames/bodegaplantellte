@@ -24,6 +24,11 @@ return new class extends Migration
             $table->string('tipo_destino', 20)->nullable();            // 'proyecto' | 'general' — se llena al despachar
             $table->timestamps();
 
+            $table->bigInteger('id_salida')->unsigned()->nullable();
+            $table->bigInteger('id_entrada')->unsigned()->nullable();
+
+            $table->foreign('id_salida')->references('id')->on('salidas');
+            $table->foreign('id_entrada')->references('id')->on('entradas');
             $table->foreign('id_entrada_detalle')->references('id')->on('entradas_detalle');
             $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
             $table->foreign('id_tipoproyecto_destino')->references('id')->on('tipoproyecto');

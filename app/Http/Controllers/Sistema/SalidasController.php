@@ -402,16 +402,21 @@ class SalidasController extends Controller
     }
 
 
+
+
+
+
     public function retirarMaterialDeProyectosCerrados(Request $request)
     {
         $rules = [
-            'fecha'           => 'required',
-            'proyecto_cerrado'=> 'required',
-            'tipo_destino'    => 'required',
-            'contenedorArray' => 'required',
+            'fecha'            => 'required',
+            'proyecto_cerrado' => 'required',
+            'tipo_destino'     => 'required',
+            'contenedorArray'  => 'required',
         ];
 
         $validator = Validator::make($request->all(), $rules);
+
         if ($validator->fails()) {
             return ['success' => 0];
         }
@@ -419,6 +424,7 @@ class SalidasController extends Controller
         DB::beginTransaction();
 
         try {
+
             $contenedor      = json_decode($request->contenedorArray, true);
             $tipodestino     = $request->tipo_destino;
             $proyectoCerrado = $request->proyecto_cerrado;
@@ -428,19 +434,25 @@ class SalidasController extends Controller
                 return ['success' => 1];
             }
 
-            // Datos del acta comunes
-            $actaNumero        = $request->acta_numero        ?? null;
-            $actaReferencia    = $request->acta_referencia    ?? null;
-            $actaIdDepto       = $request->acta_id_departamento ? (int)$request->acta_id_departamento : null;
-            $actaNombreSolic   = $request->acta_nombre_solic  ?? null;
-            $actaCargoSolic    = $request->acta_cargo_solic   ?? null;
-            $actaObservaciones = $request->acta_observaciones ?? null;
-            $actaTipoDestino   = $request->acta_tipo_destino  ?? null;
+            // Datos acta
+            $actaNumero        = $request->acta_numero ?? null;
+            $actaReferencia    = $request->acta_referencia ?? null;
+            $actaIdDepto       = $request->acta_id_departamento
+                ? (int)$request->acta_id_departamento
+                : null;
 
-            // ── TIPO: TRANSFERENCIA A PROYECTO ACTIVO ─────────────────────
+            $actaNombreSolic   = $request->acta_nombre_solic ?? null;
+            $actaCargoSolic    = $request->acta_cargo_solic ?? null;
+            $actaObservaciones = $request->acta_observaciones ?? null;
+            $actaTipoDestino   = $request->acta_tipo_destino ?? null;
+
+            // ==========================================================
+            // TRANSFERENCIA A PROYECTO
+            // ==========================================================
             if ($tipodestino === 'proyecto') {
 
-                $salida                                = new Salidas();
+                // SALIDA
+                $salida = new Salidas();
                 $salida->fecha                         = Carbon::parse($request->fecha);
                 $salida->descripcion                   = $request->descripcion;
                 $salida->id_tipoproyecto               = $proyectoCerrado;
@@ -455,7 +467,8 @@ class SalidasController extends Controller
                 $salida->acta_tipo_destino             = $actaTipoDestino;
                 $salida->save();
 
-                $entrada                                = new Entradas();
+                // ENTRADA
+                $entrada = new Entradas();
                 $entrada->id_tipoproyecto               = $proyectoDestino;
                 $entrada->fecha                         = Carbon::parse($request->fecha);
                 $entrada->descripcion                   = $request->descripcion;
@@ -463,22 +476,48 @@ class SalidasController extends Controller
                 $entrada->id_tipoproyecto_transferencia = $proyectoCerrado;
                 $entrada->save();
 
+                // HISTORIAL
+                $transferencia = new Transferencia();
+                $transferencia->id_tipoproyecto        = $proyectoDestino;
+                $transferencia->id_tipoproyecto_origen = $proyectoCerrado;
+                $transferencia->id_salida              = $salida->id;
+                $transferencia->id_entrada             = $entrada->id;
+                $transferencia->fecha                  = Carbon::parse($request->fecha);
+                $transferencia->descripcion            = $request->descripcion;
+                $transferencia->documento              = null;
+                $transferencia->tipo_salida            = 'proyecto';
+                $transferencia->save();
+
                 foreach ($contenedor as $item) {
+
                     $idEntradaDetalle = $item['infoIdEntradaDeta'];
-                    $cantidad         = (int) $item['infoCantidad'];
+                    $cantidad         = (int)$item['infoCantidad'];
 
                     $entradaDetalle = EntradasDetalle::find($idEntradaDetalle);
+
                     if (!$entradaDetalle) {
                         DB::rollback();
                         return ['success' => 2];
                     }
 
-                    $totalSalido    = SalidasDetalle::where('id_entrada_detalle', $idEntradaDetalle)->sum('cantidad_salida');
-                    $totalReservado = Reserva::where('id_entrada_detalle', $idEntradaDetalle)->where('despachado', 0)->sum('cantidad');
-                    $libre          = $entradaDetalle->cantidad_inicial - $totalSalido - $totalReservado;
+                    $totalSalido = SalidasDetalle::where(
+                        'id_entrada_detalle',
+                        $idEntradaDetalle
+                    )->sum('cantidad_salida');
+
+                    $totalReservado = Reserva::where(
+                        'id_entrada_detalle',
+                        $idEntradaDetalle
+                    )->where('despachado', 0)->sum('cantidad');
+
+                    $libre = $entradaDetalle->cantidad_inicial
+                        - $totalSalido
+                        - $totalReservado;
 
                     if ($cantidad > $libre) {
+
                         DB::rollback();
+
                         return [
                             'success'         => 3,
                             'nombre_material' => $entradaDetalle->material->nombre,
@@ -487,122 +526,124 @@ class SalidasController extends Controller
                         ];
                     }
 
-                    $salidaDet                     = new SalidasDetalle();
+                    // SALIDA DETALLE
+                    $salidaDet = new SalidasDetalle();
                     $salidaDet->id_salida          = $salida->id;
                     $salidaDet->id_entrada_detalle = $idEntradaDetalle;
                     $salidaDet->cantidad_salida    = $cantidad;
                     $salidaDet->save();
 
-                    $infoMaterial = Materiales::find($entradaDetalle->id_material);
+                    $infoMaterial = Materiales::find(
+                        $entradaDetalle->id_material
+                    );
 
-                    $entradaDet                   = new EntradasDetalle();
+                    // ENTRADA DETALLE
+                    $entradaDet = new EntradasDetalle();
                     $entradaDet->id_entradas      = $entrada->id;
                     $entradaDet->id_material      = $entradaDetalle->id_material;
                     $entradaDet->cantidad_inicial = $cantidad;
                     $entradaDet->precio           = $entradaDetalle->precio;
-                    $entradaDet->nombre           = $infoMaterial ? $infoMaterial->nombre : $entradaDetalle->nombre;
+                    $entradaDet->nombre           =
+                        $infoMaterial
+                            ? $infoMaterial->nombre
+                            : $entradaDetalle->nombre;
+
                     $entradaDet->save();
+
+                    // HISTORIAL DETALLE
+                    $transDet = new TransferenciaDetalle();
+                    $transDet->id_transferencia   = $transferencia->id;
+                    $transDet->id_entrada_detalle = $idEntradaDetalle;
+                    $transDet->cantidad_sobrante  = $cantidad;
+                    $transDet->precio             = $entradaDetalle->precio;
+                    $transDet->nombre_material    =
+                        $infoMaterial
+                            ? $infoMaterial->nombre
+                            : $entradaDetalle->nombre;
+
+                    $transDet->save();
                 }
 
-                // ── TIPO: SALIDA GENERAL ──────────────────────────────────────
-            } elseif ($tipodestino === 'general') {
+            }
+            // ==========================================================
+            // SALIDA GENERAL
+            // ==========================================================
+            elseif ($tipodestino === 'general') {
 
-                $salida                                = new Salidas();
-                $salida->fecha                         = Carbon::parse($request->fecha);
-                $salida->descripcion                   = $request->descripcion;
-                $salida->id_tipoproyecto               = $proyectoCerrado;
-                $salida->es_transferencia              = 0;
-                $salida->id_tipoproyecto_transferencia = null;
-                $salida->acta_numero                   = $actaNumero;
-                $salida->acta_referencia               = $actaReferencia;
-                $salida->acta_id_departamento          = $actaIdDepto;
-                $salida->acta_nombre_solic             = $actaNombreSolic;
-                $salida->acta_cargo_solic              = $actaCargoSolic;
-                $salida->acta_observaciones            = $actaObservaciones;
-                $salida->acta_tipo_destino             = $actaTipoDestino;
+                $salida = new Salidas();
+                $salida->fecha                = Carbon::parse($request->fecha);
+                $salida->descripcion          = $request->descripcion;
+                $salida->id_tipoproyecto      = $proyectoCerrado;
+                $salida->es_transferencia     = 0;
+                $salida->acta_numero          = $actaNumero;
+                $salida->acta_referencia      = $actaReferencia;
+                $salida->acta_id_departamento = $actaIdDepto;
+                $salida->acta_nombre_solic    = $actaNombreSolic;
+                $salida->acta_cargo_solic     = $actaCargoSolic;
+                $salida->acta_observaciones   = $actaObservaciones;
+                $salida->acta_tipo_destino    = $actaTipoDestino;
                 $salida->save();
 
+                // HISTORIAL
+                $transferencia = new Transferencia();
+                $transferencia->id_tipoproyecto        = null;
+                $transferencia->id_tipoproyecto_origen = $proyectoCerrado;
+                $transferencia->id_salida              = $salida->id;
+                $transferencia->id_entrada             = null;
+                $transferencia->fecha                  = Carbon::parse($request->fecha);
+                $transferencia->descripcion            = $request->descripcion;
+                $transferencia->documento              = null;
+                $transferencia->tipo_salida            = 'general';
+                $transferencia->save();
+
                 foreach ($contenedor as $item) {
+
                     $idEntradaDetalle = $item['infoIdEntradaDeta'];
-                    $cantidad         = (int) $item['infoCantidad'];
+                    $cantidad         = (int)$item['infoCantidad'];
 
                     $entradaDetalle = EntradasDetalle::find($idEntradaDetalle);
+
                     if (!$entradaDetalle) {
                         DB::rollback();
                         return ['success' => 2];
                     }
 
-                    $totalSalido    = SalidasDetalle::where('id_entrada_detalle', $idEntradaDetalle)->sum('cantidad_salida');
-                    $totalReservado = Reserva::where('id_entrada_detalle', $idEntradaDetalle)->where('despachado', 0)->sum('cantidad');
-                    $libre          = $entradaDetalle->cantidad_inicial - $totalSalido - $totalReservado;
-
-                    if ($cantidad > $libre) {
-                        DB::rollback();
-                        return [
-                            'success'         => 3,
-                            'nombre_material' => $entradaDetalle->nombre,
-                            'cantidad_pedida' => $cantidad,
-                            'disponible'      => $libre,
-                        ];
-                    }
-
-                    $salidaDet                     = new SalidasDetalle();
+                    $salidaDet = new SalidasDetalle();
                     $salidaDet->id_salida          = $salida->id;
                     $salidaDet->id_entrada_detalle = $idEntradaDetalle;
                     $salidaDet->cantidad_salida    = $cantidad;
                     $salidaDet->save();
+
+                    // HISTORIAL DETALLE
+                    $transDet = new TransferenciaDetalle();
+                    $transDet->id_transferencia   = $transferencia->id;
+                    $transDet->id_entrada_detalle = $idEntradaDetalle;
+                    $transDet->cantidad_sobrante  = $cantidad;
+                    $transDet->precio             = $entradaDetalle->precio;
+                    $transDet->nombre_material    =
+                        $entradaDetalle->material->nombre
+                        ?? $entradaDetalle->nombre;
+
+                    $transDet->save();
                 }
-
-                // ── TIPO: RESERVA ─────────────────────────────────────────────
-            } elseif ($tipodestino === 'reserva') {
-
-                foreach ($contenedor as $item) {
-                    $idEntradaDetalle = $item['infoIdEntradaDeta'];
-                    $cantidad         = (int) $item['infoCantidad'];
-
-                    $entradaDetalle = EntradasDetalle::find($idEntradaDetalle);
-                    if (!$entradaDetalle) {
-                        DB::rollback();
-                        return ['success' => 2];
-                    }
-
-                    $totalSalido    = SalidasDetalle::where('id_entrada_detalle', $idEntradaDetalle)->sum('cantidad_salida');
-                    $totalReservado = Reserva::where('id_entrada_detalle', $idEntradaDetalle)->where('despachado', 0)->sum('cantidad');
-                    $libre          = $entradaDetalle->cantidad_inicial - $totalSalido - $totalReservado;
-
-                    if ($cantidad > $libre) {
-                        DB::rollback();
-                        return [
-                            'success'         => 3,
-                            'nombre_material' => $entradaDetalle->nombre,
-                            'cantidad_pedida' => $cantidad,
-                            'disponible'      => $libre,
-                        ];
-                    }
-
-                    $reserva                     = new Reserva();
-                    $reserva->id_entrada_detalle = $idEntradaDetalle;
-                    $reserva->id_tipoproyecto    = $proyectoCerrado;
-                    $reserva->cantidad           = $cantidad;
-                    $reserva->descripcion        = $request->descripcion;
-                    $reserva->fecha_reserva      = Carbon::parse($request->fecha);
-                    $reserva->despachado         = 0;
-                    $reserva->save();
-                }
-
-            } else {
-                return ['success' => 0];
             }
 
             DB::commit();
 
-            // Retornar id_salida para los tipos que crean salida
-            $idSalida = isset($salida) ? $salida->id : null;
-            return ['success' => 10, 'id_salida' => $idSalida];
+            return [
+                'success'  => 10,
+                'id_salida'=> $salida->id ?? null
+            ];
 
         } catch (\Throwable $e) {
-            Log::error('retirarMaterialDeProyectosCerrados: ' . $e);
+
             DB::rollback();
+
+            Log::error(
+                'retirarMaterialDeProyectosCerrados: '
+                . $e->getMessage()
+            );
+
             return ['success' => 99];
         }
     }
@@ -639,9 +680,6 @@ class SalidasController extends Controller
 
         return ['success' => 1, 'materiales' => $materiales];
     }
-
-
-
 
 
 
