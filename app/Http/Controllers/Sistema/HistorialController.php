@@ -1160,16 +1160,16 @@ class HistorialController extends Controller
 
         // ── Observaciones ─────────────────────────────────────────────
         $html .= "
-<br>
-<table width='100%' border='1' cellspacing='0' cellpadding='6'
-       style='border-collapse:collapse; font-size:11px;'>
-    <tr style='background:#f2f4f8;'>
-        <td style='font-weight:bold;'>OBSERVACIONES:</td>
-    </tr>
-    <tr>
-        <td style='height:40px; vertical-align:top;'>" . htmlspecialchars($observaciones) . "</td>
-    </tr>
-</table>";
+            <br>
+            <table width='100%' border='1' cellspacing='0' cellpadding='6'
+                   style='border-collapse:collapse; font-size:11px;'>
+                <tr style='background:#f2f4f8;'>
+                    <td style='font-weight:bold;'>OBSERVACIONES:</td>
+                </tr>
+                <tr>
+                    <td style='height:40px; vertical-align:top;'>" . htmlspecialchars($observaciones) . "</td>
+                </tr>
+            </table>";
 
         // ── Firmas ────────────────────────────────────────────────────
         $px = $informacionGeneral->px_firmas ?? 40;

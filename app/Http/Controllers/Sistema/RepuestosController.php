@@ -195,6 +195,9 @@ class RepuestosController extends Controller
     // GUARDAR ENTRADAS
     public function guardarEntrada(Request $request)
     {
+
+
+
         $rules = [
             'fecha'     => 'required',
             'tipoproyecto' => 'required',
@@ -221,7 +224,7 @@ class RepuestosController extends Controller
             $registro->id_tipoproyecto = $request->tipoproyecto;
             $registro->fecha = Carbon::parse($request->fecha);
             $registro->descripcion = $request->descripcion;
-            $registro->factura = $request->factura;
+            $registro->factura = $request->lote;
             $registro->es_transferencia = 0;
             $registro->id_tipoproyecto_transferencia = null;
             $registro->save();
