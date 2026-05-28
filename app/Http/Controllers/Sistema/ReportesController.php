@@ -5672,76 +5672,64 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
      * Para un proyecto ACTIVO la lógica es la de siempre (entradas y salidas
      * operativas dentro/fuera del período).
      */
+
+
     public function vistaPDFReportePorPeriodos(Request $request)
     {
-        $idproy = $request->input('idproy');
-        $estado = $request->input('estado', 'activo');   // 'activo' | 'cerrado'
-        $desde = $request->input('desde');
-        $hasta = $request->input('hasta');
+        $idproy      = $request->input('idproy');
+        $estado      = $request->input('estado', 'activo');   // 'activo' | 'cerrado'
+        $desde       = $request->input('desde');
+        $hasta       = $request->input('hasta');
+        $mostrarCero = $request->input('mostrar_cero', '0') === '1'; // ← NUEVO
 
         // Normalizar: solo se aceptan dos valores controlados
         $estado = ($estado === 'cerrado') ? 'cerrado' : 'activo';
 
         $start = \Carbon\Carbon::parse($desde)->startOfDay();
-        $end = \Carbon\Carbon::parse($hasta)->endOfDay();
+        $end   = \Carbon\Carbon::parse($hasta)->endOfDay();
 
         $desdeFormat = \Carbon\Carbon::parse($desde)->format('d/m/Y');
         $hastaFormat = \Carbon\Carbon::parse($hasta)->format('d/m/Y');
 
-        $proyecto = \App\Models\TipoProyecto::find($idproy);
+        $proyecto     = \App\Models\TipoProyecto::find($idproy);
         $logoalcaldia = 'images/logo.png';
 
         // ── Configuración según el estado del proyecto ─────────────────────
         if ($estado === 'cerrado') {
             $tituloReporte = 'REPORTE DE SALDOS DE MATERIALES SOBRANTES';
-            $nombreCodigo = "GEAD-003-REPO";
+            $nombreCodigo  = "GEAD-003-REPO";
         } else {
             $tituloReporte = 'REPORTE DE SALDOS DE MATERIALES';
-            $nombreCodigo = "";
+            $nombreCodigo  = "";
         }
-
-
-
-
-
 
         // ── Validar fecha de cierre solo si proyecto cerrado ─────────────
         if ($estado === 'cerrado') {
-
             $fechaCierre = Carbon::parse($proyecto->fecha_cierre)->startOfDay();
-
-            // No permitir fechas menores al cierre
             if ($start->lt($fechaCierre) || $end->lt($fechaCierre)) {
                 return 'El rango solicitado no puede ser menor a la fecha de cierre del proyecto: ' . $fechaCierre->format('d/m/Y');
             }
         }
 
-
+        // ===================================================================
+        //  HAVING dinámico según $mostrarCero
+        //  - false (por defecto): oculta filas donde saldo_final_cant = 0
+        //  - true:                muestra todo (comportamiento anterior)
+        // ===================================================================
+        //
+        //  El HAVING base filtra filas sin ningún movimiento (todo en 0).
+        //  Cuando $mostrarCero = false, añadimos la condición extra:
+        //      AND SUM(saldo_final_cant) <> 0
+        // ===================================================================
+        $havingExtra = $mostrarCero
+            ? ''
+            : 'AND SUM(b.saldo_final_cant) <> 0';
 
         // ===================================================================
         //  CONSULTA
         // ===================================================================
-        //
-        //  Se usan los mismos CTEs base (entradas / salidas) pero las cuatro
-        //  agregaciones (in_before, out_before, in_period, out_period) cambian
-        //  de definición según el estado:
-        //
-        //  ACTIVO  -> comportamiento clásico por fechas.
-        //  CERRADO -> entradas del período = 0 (no hay CTE in_period real);
-        //             el saldo inicial absorbe TODO el material original menos
-        //             las transferencias previas; el período solo cuenta
-        //             transferencias.
-        //
         if ($estado === 'cerrado') {
 
-            // En CERRADO:
-            //  - entradas: SIN filtro de es_transferencia (material original).
-            //  - salidas:  se separan en dos grupos:
-            //       * operativas (es_transferencia = 0 / NULL) -> consumo normal.
-            //       * transferencias (es_transferencia = 1).
-            //    Ambos grupos se reparten por fecha: lo anterior al período
-            //    alimenta el saldo inicial; lo que cae dentro del período se
-            //    cuenta como SALIDAS del período.
             $rows = DB::select("
             WITH entradas AS (
                 SELECT
@@ -5754,7 +5742,6 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 WHERE e.id_tipoproyecto = ?
             ),
             salidas_oper AS (
-                -- salidas operativas / generales (es_transferencia 0 o NULL)
                 SELECT
                     sd.id_entrada_detalle,
                     sd.cantidad_salida,
@@ -5765,7 +5752,6 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                   AND (s.es_transferencia = 0 OR s.es_transferencia IS NULL)
             ),
             salidas_transf AS (
-                -- transferencias (es_transferencia = 1)
                 SELECT
                     sd.id_entrada_detalle,
                     sd.cantidad_salida,
@@ -5808,27 +5794,20 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 SELECT
                     en.id_entradadetalle,
                     en.id_material,
-                    obj.codigo                          AS codigo,
+                    obj.codigo                           AS codigo,
                     COALESCE(m.nombre, en.id_material)   AS descripcion,
                     um.nombre                            AS unidad_medida,
                     en.precio,
 
-                    -- SALDO INICIAL = todo lo original
-                    --                 - operativas anteriores al período
-                    --                 - transferencias anteriores al período
                     (COALESCE(it.qty, 0)
                      - COALESCE(ob.qty, 0)
                      - COALESCE(tb.qty, 0))                       AS saldo_inicial_cant,
 
-                    -- ENTRADAS del período: SIEMPRE 0 en proyecto cerrado
                     0                                             AS entradas_mes_cant,
 
-                    -- SALIDAS del período = operativas del período
-                    --                       + transferencias del período
                     (COALESCE(op.qty, 0)
                      + COALESCE(tp.qty, 0))                       AS salidas_mes_cant,
 
-                    -- SALDO FINAL = inicial - salidas del período
                     (COALESCE(it.qty, 0)
                      - COALESCE(ob.qty, 0)
                      - COALESCE(tb.qty, 0)
@@ -5879,22 +5858,23 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                  OR SUM(b.salidas_mes_cant)   <> 0
                  OR SUM(b.saldo_inicial_cant) <> 0
                  OR SUM(b.saldo_final_cant)   <> 0)
+            {$havingExtra}
             ORDER BY MAX(b.codigo), MAX(b.descripcion)
         ", [
-                $idproy,                 // entradas
-                $idproy,                 // salidas_oper
-                $idproy,                 // salidas_transf
-                $start->toDateString(),  // oper_before
-                $start->toDateString(),  // oper_period    >=
-                $end->toDateString(),    // oper_period    <=
-                $start->toDateString(),  // transf_before
-                $start->toDateString(),  // transf_period  >=
-                $end->toDateString(),    // transf_period  <=
+                $idproy,
+                $idproy,
+                $idproy,
+                $start->toDateString(),
+                $start->toDateString(),
+                $end->toDateString(),
+                $start->toDateString(),
+                $start->toDateString(),
+                $end->toDateString(),
             ]);
 
         } else {
 
-            // ── ACTIVO: lógica original (sin cambios) ──────────────────────
+            // ── ACTIVO ──────────────────────────────────────────────────────
             $filtroSalidas = " AND (s.es_transferencia = 0 OR s.es_transferencia IS NULL) ";
 
             $rows = DB::select("
@@ -5989,74 +5969,83 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 SUM(b.saldo_final_money)   AS saldo_final_money
             FROM base b
             GROUP BY b.id_material, b.precio
-            HAVING (SUM(b.entradas_mes_cant) <> 0
-                 OR SUM(b.salidas_mes_cant)  <> 0
+            HAVING (SUM(b.entradas_mes_cant)  <> 0
+                 OR SUM(b.salidas_mes_cant)   <> 0
                  OR SUM(b.saldo_inicial_cant) <> 0
                  OR SUM(b.saldo_final_cant)   <> 0)
+            {$havingExtra}
             ORDER BY MAX(b.codigo), MAX(b.descripcion)
         ", [
-                $idproy,                 // entradas
-                $idproy,                 // salidas
-                $start->toDateString(),  // in_before
-                $start->toDateString(),  // out_before
-                $start->toDateString(),  // in_period >=
-                $end->toDateString(),    // in_period <=
-                $start->toDateString(),  // out_period >=
-                $end->toDateString(),    // out_period <=
+                $idproy,
+                $idproy,
+                $start->toDateString(),
+                $start->toDateString(),
+                $start->toDateString(),
+                $end->toDateString(),
+                $start->toDateString(),
+                $end->toDateString(),
             ]);
         }
 
         // ── Totales ───────────────────────────────────────────────────────
         $totales = [
-            'inicial_cant' => 0, 'entradas_cant' => 0, 'salidas_cant' => 0, 'final_cant' => 0,
-            'inicial_money' => 0.0, 'entradas_money' => 0.0, 'salidas_money' => 0.0, 'final_money' => 0.0,
+            'inicial_cant'  => 0,   'entradas_cant'  => 0,
+            'salidas_cant'  => 0,   'final_cant'     => 0,
+            'inicial_money' => 0.0, 'entradas_money' => 0.0,
+            'salidas_money' => 0.0, 'final_money'    => 0.0,
         ];
 
         $sumPorCodigo = [];
 
         foreach ($rows as $r) {
-            $totales['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
-            $totales['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
-            $totales['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
-            $totales['final_cant'] += (int)($r->saldo_final_cant ?? 0);
-            $totales['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
-            $totales['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
-            $totales['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
-            $totales['final_money'] += (float)($r->saldo_final_money ?? 0);
+            $totales['inicial_cant']   += (int)($r->saldo_inicial_cant  ?? 0);
+            $totales['entradas_cant']  += (int)($r->entradas_mes_cant   ?? 0);
+            $totales['salidas_cant']   += (int)($r->salidas_mes_cant    ?? 0);
+            $totales['final_cant']     += (int)($r->saldo_final_cant    ?? 0);
+            $totales['inicial_money']  += (float)($r->saldo_inicial_money ?? 0);
+            $totales['entradas_money'] += (float)($r->entradas_mes_money  ?? 0);
+            $totales['salidas_money']  += (float)($r->salidas_mes_money   ?? 0);
+            $totales['final_money']    += (float)($r->saldo_final_money   ?? 0);
 
             $codigo = $r->codigo ?? 'SIN-CODIGO';
-
             if (!isset($sumPorCodigo[$codigo])) {
                 $sumPorCodigo[$codigo] = [
-                    'codigo' => $codigo,
-                    'inicial_cant' => 0, 'entradas_cant' => 0,
-                    'salidas_cant' => 0, 'final_cant' => 0,
+                    'codigo'        => $codigo,
+                    'inicial_cant'  => 0,   'entradas_cant'  => 0,
+                    'salidas_cant'  => 0,   'final_cant'     => 0,
                     'inicial_money' => 0.0, 'entradas_money' => 0.0,
-                    'salidas_money' => 0.0, 'final_money' => 0.0,
+                    'salidas_money' => 0.0, 'final_money'    => 0.0,
                 ];
             }
-
-            $sumPorCodigo[$codigo]['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
-            $sumPorCodigo[$codigo]['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
-            $sumPorCodigo[$codigo]['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
-            $sumPorCodigo[$codigo]['final_cant'] += (int)($r->saldo_final_cant ?? 0);
-            $sumPorCodigo[$codigo]['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
-            $sumPorCodigo[$codigo]['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
-            $sumPorCodigo[$codigo]['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
-            $sumPorCodigo[$codigo]['final_money'] += (float)($r->saldo_final_money ?? 0);
+            $sumPorCodigo[$codigo]['inicial_cant']   += (int)($r->saldo_inicial_cant  ?? 0);
+            $sumPorCodigo[$codigo]['entradas_cant']  += (int)($r->entradas_mes_cant   ?? 0);
+            $sumPorCodigo[$codigo]['salidas_cant']   += (int)($r->salidas_mes_cant    ?? 0);
+            $sumPorCodigo[$codigo]['final_cant']     += (int)($r->saldo_final_cant    ?? 0);
+            $sumPorCodigo[$codigo]['inicial_money']  += (float)($r->saldo_inicial_money ?? 0);
+            $sumPorCodigo[$codigo]['entradas_money'] += (float)($r->entradas_mes_money  ?? 0);
+            $sumPorCodigo[$codigo]['salidas_money']  += (float)($r->salidas_mes_money   ?? 0);
+            $sumPorCodigo[$codigo]['final_money']    += (float)($r->saldo_final_money   ?? 0);
         }
 
         $fechaHoy = \Carbon\Carbon::now('America/El_Salvador')->format('d-m-Y');
 
         // ── Render PDF ─────────────────────────────────────────────────────
-        $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER', 'orientation' => 'L']);
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'L',
+        ]);
         $mpdf->SetTitle('Reporte de Movimientos por Proyecto');
         $mpdf->showImageErrors = false;
 
         if (file_exists(public_path('css/cssbodega.css'))) {
-            $mpdf->WriteHTML(file_get_contents(public_path('css/cssbodega.css')), \Mpdf\HTMLParserMode::HEADER_CSS);
+            $mpdf->WriteHTML(
+                file_get_contents(public_path('css/cssbodega.css')),
+                \Mpdf\HTMLParserMode::HEADER_CSS
+            );
         }
 
+        // ── Cabecera del documento ─────────────────────────────────────────
         $html = "
     <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
         <tr>
@@ -6072,14 +6061,15 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                     </tr>
                 </table>
             </td>
-            <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000; padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                       padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
                 {$tituloReporte}
             </td>
             <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
                 <table width='100%' style='font-size:10px;'>
                     <tr>
                         <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
-                        <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>$nombreCodigo</td>
+                        <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>{$nombreCodigo}</td>
                     </tr>
                     <tr>
                         <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
@@ -6106,90 +6096,54 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         </tr>
     </table>";
 
-
         // Estado del proyecto
         $estaCerrado = $proyecto->transferido == 1;
-        $textoEstado = $estaCerrado ? 'SI' : 'NO';
-
-        // Fecha de cierre
-        $fechaCierre = 'No aplica';
+        $fechaCierreTexto = 'No aplica';
 
         if ($estaCerrado) {
-
             $cierre = Transferencia::where('id_tipoproyecto', $idproy)
                 ->where('tipo_salida', 'snapshot')
                 ->orderBy('id', 'desc')
                 ->first();
-
             if ($cierre) {
-                $fechaCierre = Carbon::parse($cierre->fecha)
-                    ->format('d-m-Y');
+                $fechaCierreTexto = Carbon::parse($cierre->fecha)->format('d-m-Y');
             }
         }
 
-
         $html .= "
-<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px;'>
-
-    <tr>
-        <td style='width:22%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
-                   font-weight:bold; background:#f5f5f5;'>
-            PERIODO
-        </td>
-
-        <td style='width:43%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'>
-            {$desdeFormat} AL {$hastaFormat}
-        </td>
-
-        <td style='width:20%;'></td>
-
-        <td style='width:7%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
-                   font-weight:bold; background:#f5f5f5; text-align:center;'>
-            FECHA
-        </td>
-
-        <td style='width:8%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px; text-align:center;'>
-            {$fechaHoy}
-        </td>
-    </tr>";
+    <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px;'>
+        <tr>
+            <td style='width:22%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
+                       font-weight:bold; background:#f5f5f5;'>PERIODO</td>
+            <td style='width:43%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'>
+                {$desdeFormat} AL {$hastaFormat}
+            </td>
+            <td style='width:20%;'></td>
+            <td style='width:7%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
+                       font-weight:bold; background:#f5f5f5; text-align:center;'>FECHA</td>
+            <td style='width:8%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px; text-align:center;'>
+                {$fechaHoy}
+            </td>
+        </tr>";
 
         if ($estaCerrado) {
-
             $html .= "
-    <tr>
-        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
-                   font-weight:bold; background:#f5f5f5;'>
-            FECHA DE CIERRE
-        </td>
-
-        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'>
-            {$fechaCierre}
-        </td>
-
-        <td colspan='3'></td>
-    </tr>";
+        <tr>
+            <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px;
+                       font-weight:bold; background:#f5f5f5;'>FECHA DE CIERRE</td>
+            <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'>{$fechaCierreTexto}</td>
+            <td colspan='3'></td>
+        </tr>";
         }
 
+
+
+        $html .= "</table>";
+
+        // ── Tabla de materiales ────────────────────────────────────────────
         $html .= "
-</table>
-";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        $html .= "
-    <table width='100%' border='1' cellspacing='0' cellpadding='4' style='border-collapse:collapse; font-size:11px; margin-top:8px'>
+    <table width='100%' border='1' cellspacing='0' cellpadding='4'
+           style='border-collapse:collapse; font-size:11px; margin-top:8px'>
         <thead style='background:#f2f4f8'>
             <tr>
                 <th style='text-align:center; width:5%'>No.</th>
@@ -6207,13 +6161,17 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 <th style='text-align:center; width:10%'>SALDO EXISTENCIA ACTUAL</th>
             </tr>
         </thead>
-        <tbody>
-    ";
+        <tbody>";
 
         $i = 1;
         foreach ($rows as $r) {
+            // Resaltar en gris claro las filas con existencia final = 0
+            $rowStyle = ((int)($r->saldo_final_cant ?? 0) === 0)
+                ? "style='background:#f5f5f5; color:#999;'"
+                : '';
+
             $html .= "
-        <tr>
+        <tr {$rowStyle}>
             <td style='text-align:center'>{$i}</td>
             <td style='text-align:center'>" . e($r->codigo ?? '') . "</td>
             <td style='text-align:center'>" . e($r->unidad_medida ?? '') . "</td>
@@ -6227,8 +6185,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
             <td style='text-align:right'>$" . number_format($r->salidas_mes_money ?? 0, 2) . "</td>
             <td style='text-align:right'>" . number_format($r->saldo_final_cant ?? 0) . "</td>
             <td style='text-align:right'>$" . number_format($r->saldo_final_money ?? 0, 2) . "</td>
-        </tr>
-        ";
+        </tr>";
             $i++;
         }
 
@@ -6251,13 +6208,13 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 <td style='text-align:right'>$" . number_format($totales['final_money'], 2) . "</td>
             </tr>
         </tfoot>
-    </table>
-    ";
+    </table>";
 
         // ── Resumen ────────────────────────────────────────────────────────
         $html .= "
     <br>
-    <table width='55%' border='1' cellspacing='0' cellpadding='6' style='border-collapse:collapse; font-size:12px'>
+    <table width='55%' border='1' cellspacing='0' cellpadding='6'
+           style='border-collapse:collapse; font-size:12px'>
         <tr style='background:#eef3ff; font-weight:bold; text-align:center'>
             <td colspan='3'>Resumen del período {$desdeFormat} - {$hastaFormat}</td>
         </tr>
@@ -6286,18 +6243,17 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
             <td style='text-align:right'>" . number_format($totales['final_cant']) . "</td>
             <td style='text-align:right'>$" . number_format($totales['final_money'], 2) . "</td>
         </tr>
-    </table>
-    ";
+    </table>";
 
-        // ── Cuadro adicional: sumatorias por código presupuestario ─────────
+        // ── Resumen por código presupuestario ─────────────────────────────
         if (!empty($sumPorCodigo)) {
-
             $totalSaldoFinalCodigos = 0;
 
             $html .= "
         <br><br>
         <span style='font-weight:bold; font-size:12px;'>Resumen por Código Presupuestario</span>
-        <table width='100%' border='1' cellspacing='0' cellpadding='4' style='border-collapse:collapse; font-size:11px; margin-top:4px'>
+        <table width='100%' border='1' cellspacing='0' cellpadding='4'
+               style='border-collapse:collapse; font-size:11px; margin-top:4px'>
             <thead style='background:#f2f4f8'>
                 <tr>
                     <th style='width:4%'>#</th>
@@ -6312,39 +6268,34 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                     <th style='text-align:right; width:10%'>\$ SALDO</th>
                 </tr>
             </thead>
-            <tbody>
-        ";
+            <tbody>";
 
             $j = 1;
             foreach ($sumPorCodigo as $s) {
-
                 $totalSaldoFinalCodigos += (float)$s['final_money'];
-
                 $html .= "
-            <tr>
-                <td>{$j}</td>
-                <td>" . e($s['codigo']) . "</td>
-                <td style='text-align:right'>" . number_format($s['inicial_cant']) . "</td>
-                <td style='text-align:right'>$" . number_format($s['inicial_money'], 2) . "</td>
-                <td style='text-align:right'>" . number_format($s['entradas_cant']) . "</td>
-                <td style='text-align:right'>$" . number_format($s['entradas_money'], 2) . "</td>
-                <td style='text-align:right'>" . number_format($s['salidas_cant']) . "</td>
-                <td style='text-align:right'>$" . number_format($s['salidas_money'], 2) . "</td>
-                <td style='text-align:right'>" . number_format($s['final_cant']) . "</td>
-                <td style='text-align:right'>$" . number_format($s['final_money'], 2) . "</td>
-            </tr>
-            ";
+                <tr>
+                    <td>{$j}</td>
+                    <td>" . e($s['codigo']) . "</td>
+                    <td style='text-align:right'>" . number_format($s['inicial_cant']) . "</td>
+                    <td style='text-align:right'>$" . number_format($s['inicial_money'], 2) . "</td>
+                    <td style='text-align:right'>" . number_format($s['entradas_cant']) . "</td>
+                    <td style='text-align:right'>$" . number_format($s['entradas_money'], 2) . "</td>
+                    <td style='text-align:right'>" . number_format($s['salidas_cant']) . "</td>
+                    <td style='text-align:right'>$" . number_format($s['salidas_money'], 2) . "</td>
+                    <td style='text-align:right'>" . number_format($s['final_cant']) . "</td>
+                    <td style='text-align:right'>$" . number_format($s['final_money'], 2) . "</td>
+                </tr>";
                 $j++;
             }
 
             $html .= "
-            <tr style='font-weight:bold; background:#f9fafb'>
-                <td colspan='9' style='text-align:right'>TOTAL \$ SALDO</td>
-                <td style='text-align:right'>$" . number_format($totalSaldoFinalCodigos, 2) . "</td>
-            </tr>
+                <tr style='font-weight:bold; background:#f9fafb'>
+                    <td colspan='9' style='text-align:right'>TOTAL \$ SALDO</td>
+                    <td style='text-align:right'>$" . number_format($totalSaldoFinalCodigos, 2) . "</td>
+                </tr>
             </tbody>
-        </table>
-        ";
+        </table>";
         }
 
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
@@ -6407,14 +6358,12 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 </table>
             </td>
         </tr>
-    </table>
-    ";
+    </table>";
 
         $mpdf->setFooter("Página {PAGENO} de {nb}");
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
-
 
     public function actualizarFirmasReportePeriodos(Request $request)
     {

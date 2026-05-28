@@ -39,6 +39,7 @@
 @section('content')
     <style>
         *:focus { outline: none; }
+
         .seccion-header {
             background: linear-gradient(135deg, #1a3a6b 0%, #2156af 100%);
             border-radius: 10px 10px 0 0;
@@ -57,6 +58,8 @@
             text-transform: uppercase; letter-spacing: .06em;
             margin-bottom: 5px; display: block;
         }
+
+        /* ── Tabla ── */
         #tablaReservas thead th {
             background: #6f42c1; color: #fff; font-size: 11px;
             font-weight: 700; text-transform: uppercase;
@@ -64,6 +67,7 @@
         }
         #tablaReservas tbody td { vertical-align: middle; font-size: 13px; padding: 8px 10px; }
 
+        /* ── Botón principal ── */
         .btn-despachar {
             background: linear-gradient(135deg, #6f42c1, #5a2d91);
             color: #fff; border: none; border-radius: 8px;
@@ -75,12 +79,15 @@
             box-shadow: 0 6px 18px rgba(111,66,193,.45); color: #fff;
         }
 
+        /* ── Selects fila ── */
         .destino-select { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; }
         .proyecto-select { display: none; margin-top: 4px; font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; width: 100%; }
 
+        /* ── Fila liberar ── */
         tr.fila-liberar { background: #fff4f4 !important; }
         tr.fila-liberar td { color: #b32d2d; }
 
+        /* ── Cabecera de grupo ── */
         tr.grupo-header td {
             background: #eef1f8 !important;
             border-top: 2px solid #6f42c1 !important;
@@ -108,6 +115,14 @@
         .btn-toggle-grupo {
             background: none; border: none; color: #6f42c1;
             font-size: 13px; cursor: pointer; padding: 0 4px;
+        }
+
+        /* ── Badge modo grupo ── */
+        .badge-grupo {
+            background: #e8f0ff; color: #2156af;
+            border: 1px solid #b3c8f5; border-radius: 10px;
+            font-size: 10px; font-weight: 700; padding: 2px 8px;
+            margin-left: 8px; text-transform: uppercase; letter-spacing: .04em;
         }
     </style>
 
@@ -179,7 +194,8 @@
                     <div class="card-footer d-flex justify-content-between align-items-center"
                          style="border-top:2px solid #e8eef8; background:#f8faff; border-radius:0 0 10px 10px">
                         <small class="text-muted">
-                            Defina el destino por grupo o por fila, luego procese las reservas seleccionadas
+                            Marque el <strong>checkbox del grupo</strong> para registrar todas sus reservas en
+                            <strong>una sola salida</strong>. Marque filas individuales para generar una salida por cada una.
                         </small>
                         <button type="button" class="btn-despachar" onclick="preguntaDespachar()">
                             <i class="fas fa-paper-plane mr-1"></i> Procesar Seleccionados
@@ -190,7 +206,6 @@
         </section>
 
     </div>
-
 @stop
 
 @section('js')
@@ -218,7 +233,9 @@
             cargarReservas();
         });
 
-        // ── Cargar solo reservas pendientes ───────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // CARGAR RESERVAS
+        // ─────────────────────────────────────────────────────────────────
         function cargarReservas() {
             axios.post(urlAdmin + '/admin/reservas/listar')
                 .then((response) => {
@@ -226,18 +243,17 @@
                         toastr.error('Error al cargar reservas');
                         return;
                     }
-
-                    // Solo pendientes (despachado = 0)
                     var lista = response.data.reservas.filter(function (r) {
                         return Number(r.despachado) === 0;
                     });
-
                     renderTabla(lista);
                 })
                 .catch(() => { toastr.error('Error al cargar reservas'); });
         }
 
-        // ── Renderizar tabla ──────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // RENDERIZAR TABLA
+        // ─────────────────────────────────────────────────────────────────
         function renderTabla(lista) {
             $('#tbodyReservas').empty();
             $('#chkTodos').prop('checked', false);
@@ -279,25 +295,35 @@
                     "<tr class='grupo-header' data-grupo='" + gid + "'>" +
                     "<td colspan='8'>" +
                     "<div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px'>" +
-                    "<div style='display:flex; align-items:center'>" +
+
+                    // Izquierda: toggle + checkbox padre + nombre + contador + total + badge
+                    "<div style='display:flex; align-items:center; flex-wrap:wrap; gap:6px'>" +
                     "<button type='button' class='btn-toggle-grupo' " +
                     "onclick=\"toggleGrupo('" + gid + "', this)\">" +
                     "<i class='fas fa-chevron-down'></i></button>" +
-                    "<input type='checkbox' class='chk-grupo' " +
+
+                    // ── CHECKBOX PADRE: solo se controla manualmente ──────
+                    "<input type='checkbox' class='chk-grupo' data-gid='" + gid + "' " +
                     "onclick=\"toggleSeleccionGrupo('" + gid + "', this)\" " +
-                    "style='margin:0 8px'>" +
+                    "style='margin:0 4px'>" +
+
                     "<span class='grupo-titulo'><i class='fas fa-folder-open mr-1'></i>" +
                     nombreProyecto + "</span>" +
                     "<span class='grupo-contador'>" + reservasGrupo.length + "</span>" +
-                    "<span style='margin-left:10px; font-size:12px; color:#6f42c1; font-weight:700'>" +
+                    "<span style='margin-left:6px; font-size:12px; color:#6f42c1; font-weight:700'>" +
                     "Total: $" + totalGrupoFmt + "</span>" +
+                    "<span class='badge-grupo' id='badge-" + gid + "' style='display:none'>" +
+                    "<i class='fas fa-layer-group mr-1'></i>1 salida agrupada</span>" +
                     "</div>" +
+
+                    // Derecha: selects del grupo
                     "<div class='grupo-acciones'>" +
                     "<label><i class='fas fa-magic mr-1'></i>Aplicar a todo el grupo:</label>" +
                     "<select class='grupo-destino-select' " +
                     "onchange=\"aplicarDestinoGrupo('" + gid + "', this)\">" +
                     "<option value=''>— Elegir destino —</option>" +
                     "<option value='proyecto'>Transferir a Proyecto</option>" +
+                    "<option value='general'>Salida General</option>" +
                     "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
                     "</select>" +
                     "<select class='grupo-proyecto-select' id='gproy-" + gid + "' " +
@@ -305,6 +331,7 @@
                     opcionesProyecto +
                     "</select>" +
                     "</div>" +
+
                     "</div></td></tr>";
 
                 $('#tbodyReservas').append(headerRow);
@@ -324,7 +351,10 @@
                     var fila =
                         "<tr data-id='" + r.id + "' class='fila-reserva' data-grupo='" + gid + "'>" +
                         "<td style='text-align:center'>" +
-                        "<input type='checkbox' class='chk-reserva' data-grupo='" + gid + "' data-id='" + r.id + "'>" +
+                        // ── CHECKBOX HIJO: NO sincroniza el padre, solo re-evalúa el badge ──
+                        "<input type='checkbox' class='chk-reserva' " +
+                        "data-grupo='" + gid + "' data-id='" + r.id + "' " +
+                        "onchange=\"onCambioFilaCheckbox('" + gid + "')\">" +
                         "</td>" +
                         "<td style='font-size:12px'>" + (r.nombre_material ?? '—') + "</td>" +
                         "<td style='font-size:12px'>" + (r.nombre_proyecto_origen ?? '—') + "</td>" +
@@ -334,12 +364,14 @@
                         "<td style='font-size:12px'>" + (r.descripcion ?? '—') + "</td>" +
                         "<td>" +
                         "<select class='destino-select select-tipo' style='width:100%' " +
-                        "onchange=\"cambiarTipoDestino(this, " + r.id + ")\">" +
+                        "onchange=\"cambiarTipoDestino(this, " + r.id + ", '" + gid + "')\">" +
                         "<option value=''>— Elegir destino —</option>" +
                         "<option value='proyecto'>Transferir a Proyecto</option>" +
+                        "<option value='general'>Salida General</option>" +
                         "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
                         "</select>" +
-                        "<select class='proyecto-select select-proyecto' id='proy-" + r.id + "'>" +
+                        "<select class='proyecto-select select-proyecto' id='proy-" + r.id + "' " +
+                        "onchange=\"actualizarBadgeGrupo('" + gid + "')\">" +
                         opcionesProyecto +
                         "</select>" +
                         "</td>" +
@@ -350,22 +382,86 @@
             });
         }
 
-        // ── Colapsar/expandir grupo ───────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // TOGGLE COLAPSAR / EXPANDIR GRUPO
+        // ─────────────────────────────────────────────────────────────────
         function toggleGrupo(gid, btn) {
             $(".fila-reserva[data-grupo='" + gid + "']").toggle();
             $(btn).find('i').toggleClass('fa-chevron-down fa-chevron-right');
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // CHECKBOX PADRE → marca/desmarca TODAS las filas hijas
+        // ─────────────────────────────────────────────────────────────────
         function toggleSeleccionGrupo(gid, chk) {
             $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', chk.checked);
+            actualizarBadgeGrupo(gid);
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // CHECKBOX GLOBAL (thead)
+        // ─────────────────────────────────────────────────────────────────
         function toggleTodos(chk) {
-            $('.chk-reserva').prop('checked', chk.checked);
+            // Marcar/desmarcar todos los padres e hijos
             $('.chk-grupo').prop('checked', chk.checked);
+            $('.chk-reserva').prop('checked', chk.checked);
+            // Re-evaluar badges de todos los grupos
+            $('.chk-grupo').each(function () {
+                actualizarBadgeGrupo($(this).data('gid'));
+            });
         }
 
-        // ── Asignación masiva de destino por grupo ────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // CAMBIO EN FILA INDIVIDUAL
+        // FIX: NO toca el checkbox padre (el padre solo se mueve manualmente
+        //      o desde toggleTodos / toggleSeleccionGrupo).
+        //      Solo re-evalúa el badge.
+        // ─────────────────────────────────────────────────────────────────
+        function onCambioFilaCheckbox(gid) {
+            actualizarBadgeGrupo(gid);
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // BADGE "1 salida agrupada"
+        // Condiciones para mostrarlo:
+        //   1. Padre marcado
+        //   2. TODAS las filas del grupo marcadas
+        //   3. Todas tienen el mismo tipoDestino e idDestino
+        //   4. El tipoDestino no está vacío
+        // ─────────────────────────────────────────────────────────────────
+        function actualizarBadgeGrupo(gid) {
+            var totalHijos  = $(".chk-reserva[data-grupo='" + gid + "']").length;
+            var marcados    = $(".chk-reserva[data-grupo='" + gid + "']:checked").length;
+            var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
+
+            // Requisito 1 y 2: padre marcado y todos los hijos marcados
+            if (!padreMarcado || marcados !== totalHijos || totalHijos === 0) {
+                $('#badge-' + gid).hide();
+                return;
+            }
+
+            // Requisito 3 y 4: mismo destino en todas las filas y no vacío
+            var destinosUnicos = new Set();
+            var tieneVacio     = false;
+
+            $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
+                var tipo = $(this).find('.select-tipo').val() || '';
+                if (!tipo) { tieneVacio = true; return false; } // break
+                var proy = (tipo === 'proyecto') ? ($(this).find('.select-proyecto').val() || '') : '';
+                destinosUnicos.add(tipo + '|' + proy);
+            });
+
+            if (!tieneVacio && destinosUnicos.size === 1) {
+                $('#badge-' + gid).show();
+            } else {
+                $('#badge-' + gid).hide();
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // APLICAR DESTINO A TODO EL GRUPO
+        // Aplica tipo Y proyecto a TODAS las filas, luego marca padre e hijos
+        // ─────────────────────────────────────────────────────────────────
         function aplicarDestinoGrupo(gid, selectEl) {
             var valor       = $(selectEl).val();
             var gproySelect = $('#gproy-' + gid);
@@ -374,33 +470,62 @@
                 gproySelect.show();
             } else {
                 gproySelect.hide().val('0');
+                // Si no es proyecto, limpiar proyecto en todas las filas
+                $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
+                    var idReserva = $(this).data('id');
+                    $(this).find('.select-tipo').val(valor);
+                    cambiarTipoDestino($(this).find('.select-tipo')[0], idReserva, gid, false);
+                });
+                // Marcar padre e hijos
+                $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
+                $(".chk-grupo[data-gid='" + gid + "']").prop('checked', true);
+                actualizarBadgeGrupo(gid);
             }
+
             if (!valor) return;
 
-            $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
-                var idReserva  = $(this).data('id');
-                var filaSelect = $(this).find('.select-tipo');
-                filaSelect.val(valor);
-                cambiarTipoDestino(filaSelect[0], idReserva);
-            });
-            $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
+            if (valor === 'proyecto') {
+                // Solo aplicar tipo por ahora; el proyecto se aplica en aplicarProyectoGrupo
+                $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
+                    var idReserva = $(this).data('id');
+                    $(this).find('.select-tipo').val('proyecto');
+                    cambiarTipoDestino($(this).find('.select-tipo')[0], idReserva, gid, false);
+                });
+                // Marcar padre e hijos
+                $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
+                $(".chk-grupo[data-gid='" + gid + "']").prop('checked', true);
+                actualizarBadgeGrupo(gid);
+            }
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // APLICAR PROYECTO A TODO EL GRUPO
+        // ─────────────────────────────────────────────────────────────────
         function aplicarProyectoGrupo(gid, selectEl) {
             var idProyecto = $(selectEl).val();
             if (!idProyecto || idProyecto === '0') return;
 
+            // Aplica el proyecto a TODAS las filas con tipo=proyecto
             $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
                 if ($(this).find('.select-tipo').val() === 'proyecto') {
                     $(this).find('.select-proyecto').val(idProyecto).show();
                 }
             });
+
+            actualizarBadgeGrupo(gid);
         }
 
-        function cambiarTipoDestino(selectEl, idReserva) {
+        // ─────────────────────────────────────────────────────────────────
+        // CAMBIO DE TIPO EN FILA INDIVIDUAL
+        // skipBadge=false por defecto; se pasa true cuando se llama en lote
+        // para evitar N actualizaciones y hacer una sola al final
+        // ─────────────────────────────────────────────────────────────────
+        function cambiarTipoDestino(selectEl, idReserva, gid, skipBadge) {
             var val        = $(selectEl).val();
             var fila       = $(selectEl).closest('tr');
             var proySelect = $('#proy-' + idReserva);
+            // Obtener gid desde el argumento o desde la fila
+            var grupoId    = gid || fila.data('grupo');
 
             if (val === 'proyecto') {
                 proySelect.show();
@@ -408,9 +533,15 @@
                 proySelect.hide().val('0');
             }
             fila.toggleClass('fila-liberar', val === 'liberar');
+
+            if (!skipBadge) {
+                actualizarBadgeGrupo(grupoId);
+            }
         }
 
-        // ── Confirmar despacho ────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────
+        // VALIDAR Y CONFIRMAR
+        // ─────────────────────────────────────────────────────────────────
         function preguntaDespachar() {
             var seleccionados = $('.chk-reserva:checked');
 
@@ -420,10 +551,26 @@
             }
 
             var valido = true;
+
             seleccionados.each(function () {
-                var fila     = $(this).closest('tr');
-                var tipo     = fila.find('.select-tipo').val();
-                var proyDest = fila.find('.select-proyecto').val();
+                var idReserva = $(this).data('id');
+                var gid       = $(this).data('grupo');
+                var fila      = $(this).closest('tr');
+                var tipo      = fila.find('.select-tipo').val();
+                var proyDest  = fila.find('.select-proyecto').val();
+
+                // Si el padre está marcado y el tipo viene del grupo, el proyecto
+                // también puede venir del select del grupo
+                var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
+                if (padreMarcado && tipo === 'proyecto' && (!proyDest || proyDest === '0')) {
+                    // Intentar tomar el proyecto del selector del grupo
+                    var proyGrupo = $('#gproy-' + gid).val();
+                    if (proyGrupo && proyGrupo !== '0') {
+                        // Aplicar el proyecto del grupo a esta fila silenciosamente
+                        $('#proy-' + idReserva).val(proyGrupo).show();
+                        proyDest = proyGrupo;
+                    }
+                }
 
                 if (!tipo) {
                     toastr.error('Defina el destino de todas las reservas seleccionadas');
@@ -436,22 +583,48 @@
                     return false;
                 }
             });
+
             if (!valido) return;
 
-            var hayLiberadas = false;
+            // ── Contar grupos completos vs individuales para el mensaje ────
+            var gruposCompletos = 0;
+            var individuales    = 0;
+            var hayLiberadas    = false;
+
+            var infoGrupos = {};
             seleccionados.each(function () {
-                if ($(this).closest('tr').find('.select-tipo').val() === 'liberar') {
-                    hayLiberadas = true;
+                var gid  = $(this).data('grupo');
+                var tipo = $(this).closest('tr').find('.select-tipo').val();
+                if (tipo === 'liberar') hayLiberadas = true;
+                if (!infoGrupos[gid]) infoGrupos[gid] = { marcados: 0 };
+                infoGrupos[gid].marcados++;
+            });
+
+            $.each(infoGrupos, function (gid, info) {
+                var totalEnGrupo = $(".chk-reserva[data-grupo='" + gid + "']").length;
+                var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
+                if (padreMarcado && info.marcados === totalEnGrupo) {
+                    gruposCompletos++;
+                } else {
+                    individuales += info.marcados;
                 }
             });
 
-            var textoConfirm = hayLiberadas
-                ? 'Algunas reservas se cancelarán (no se despacharán ni generarán salida) y las demás generarán sus salidas correspondientes.'
-                : 'Se generarán las salidas correspondientes y las reservas quedarán marcadas como despachadas.';
+            var partes = [];
+            if (gruposCompletos > 0)
+                partes.push(gruposCompletos + (gruposCompletos === 1
+                    ? ' grupo registrará <strong>1 salida agrupada</strong>'
+                    : ' grupos registrarán <strong>1 salida agrupada cada uno</strong>'));
+            if (individuales > 0)
+                partes.push(individuales + (individuales === 1
+                    ? ' reserva individual registrará <strong>su propia salida</strong>'
+                    : ' reservas individuales registrarán <strong>su propia salida</strong>'));
+            if (hayLiberadas)
+                partes.push('algunas reservas serán <strong>canceladas</strong> sin generar salida');
 
             Swal.fire({
                 title: '¿Procesar reservas?',
-                text:  textoConfirm,
+                html:  '• ' + partes.join('<br>• '),
                 icon:  'question',
                 showCancelButton:   true,
                 confirmButtonColor: '#6f42c1',
@@ -461,23 +634,61 @@
             }).then((result) => { if (result.isConfirmed) ejecutarDespacho(); });
         }
 
+        // ─────────────────────────────────────────────────────────────────
+        // EJECUTAR DESPACHO
+        // ─────────────────────────────────────────────────────────────────
         function ejecutarDespacho() {
             var fecha       = document.getElementById('fecha-despacho').value;
             var descripcion = document.getElementById('descripcion-despacho').value;
 
             if (!fecha) { toastr.error('Fecha es requerida'); return; }
 
-            var despachos = [];
+            // Agrupar checkboxes marcados por gid
+            var mapaGrupos = {};
+
             $('.chk-reserva:checked').each(function () {
                 var idReserva = $(this).data('id');
+                var gid       = $(this).data('grupo');
                 var fila      = $(this).closest('tr');
                 var tipo      = fila.find('.select-tipo').val();
                 var proyDest  = fila.find('.select-proyecto').val();
 
-                despachos.push({
+                // Si el proyecto de la fila está vacío pero el padre tiene proyecto, usarlo
+                if (tipo === 'proyecto' && (!proyDest || proyDest === '0')) {
+                    var proyGrupo = $('#gproy-' + gid).val();
+                    if (proyGrupo && proyGrupo !== '0') proyDest = proyGrupo;
+                }
+
+                if (!mapaGrupos[gid]) mapaGrupos[gid] = [];
+                mapaGrupos[gid].push({
                     idReserva:   idReserva,
                     tipoDestino: tipo,
                     idDestino:   (tipo === 'proyecto') ? proyDest : null,
+                });
+            });
+
+            // Armar payload: { esGrupo, gid, items }
+            var despachos = [];
+
+            $.each(mapaGrupos, function (gid, filas) {
+                var totalEnGrupo = $(".chk-reserva[data-grupo='" + gid + "']").length;
+                var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
+
+                // Verificar destino uniforme
+                var destinosUnicos = new Set();
+                filas.forEach(function (f) {
+                    var proy = (f.tipoDestino === 'proyecto') ? (f.idDestino || '') : '';
+                    destinosUnicos.add(f.tipoDestino + '|' + proy);
+                });
+
+                var esGrupoCompleto = padreMarcado
+                    && (filas.length === totalEnGrupo)
+                    && (destinosUnicos.size === 1);
+
+                despachos.push({
+                    esGrupo: esGrupoCompleto,
+                    gid:     gid,
+                    items:   filas,
                 });
             });
 
@@ -501,6 +712,8 @@
                         }).then((r) => { if (r.isConfirmed) location.reload(); });
                     } else if (response.data.success === 2) {
                         toastr.error(response.data.msg ?? 'Error en reserva');
+                    } else if (response.data.success === 4) {
+                        toastr.error(response.data.msg ?? 'Proyecto destino cerrado');
                     } else {
                         toastr.error('Error al despachar');
                     }

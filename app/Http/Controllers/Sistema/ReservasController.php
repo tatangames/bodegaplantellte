@@ -166,6 +166,17 @@ class ReservasController extends Controller
 
 
 
+
+    // =========================================================================
+    // DESPACHAR
+    // Payload esperado:
+    //   despachos = [
+    //     { esGrupo: bool, gid: string, items: [
+    //         { idReserva, tipoDestino, idDestino|null }, ...
+    //     ]},
+    //     ...
+    //   ]
+    // =========================================================================
     public function despachar(Request $request)
     {
         $rules = [
@@ -187,176 +198,23 @@ class ReservasController extends Controller
                 return ['success' => 1];
             }
 
-            foreach ($despachos as $d) {
-                $idReserva = $d['idReserva'];
-                $tipoDestino = $d['tipoDestino'];        // 'proyecto' | 'general' | 'liberar'
-                $idDestino = $d['idDestino'] ?? null;  // id proyecto si es 'proyecto'
+            foreach ($despachos as $grupo) {
+                $esGrupo = $grupo['esGrupo'] ?? false;
+                $items = $grupo['items'] ?? [];
 
-                $reserva = Reserva::find($idReserva);
-                if (!$reserva || $reserva->despachado) {
+                if (empty($items)) continue;
+
+                if ($esGrupo) {
+                    // ── Grupo completo: una sola Salida / Entrada / Transferencia ──
+                    $resultado = $this->despacharComoGrupo($items, $request);
+                } else {
+                    // ── Selección individual: una Salida por reserva ──
+                    $resultado = $this->despacharIndividual($items, $request);
+                }
+
+                if ($resultado !== true) {
                     DB::rollback();
-                    return ['success' => 2, 'msg' => 'Reserva no encontrada o ya despachada'];
-                }
-
-                // ── Liberar reserva (cancelar) ────────────────────────────
-                if ($tipoDestino === 'liberar') {
-                    $reserva->despachado = 1;
-                    $reserva->tipo_destino = 'liberada';
-                    $reserva->fecha_despacho = Carbon::parse($request->fecha);
-                    $reserva->id_tipoproyecto_destino = null;
-                    $reserva->id_salida = null;
-                    $reserva->id_entrada = null;
-                    $reserva->save();
-                    continue;
-                }
-
-                $entradaDetalle = EntradasDetalle::find($reserva->id_entrada_detalle);
-                if (!$entradaDetalle) {
-                    DB::rollback();
-                    return ['success' => 2, 'msg' => 'Material no encontrado'];
-                }
-
-                $infoMaterial = Materiales::find($entradaDetalle->id_material);
-
-                // ── Nombre del material (igual que retirar) ───────────────
-                $nombreMaterial = $infoMaterial
-                    ? $infoMaterial->nombre
-                    : ($entradaDetalle->nombre ?? '—');
-
-                // ==========================================================
-                // TRANSFERENCIA A PROYECTO
-                // ==========================================================
-                if ($tipoDestino === 'proyecto' && $idDestino) {
-
-
-                    // ── Blindaje: el proyecto destino debe estar ACTIVO ──
-                    $proyDestino = TipoProyecto::find($idDestino);
-
-                    if (!$proyDestino || $proyDestino->transferido == 1) {
-                        DB::rollback();
-                        return [
-                            'success' => 4,
-                            'msg'     => 'El proyecto destino está cerrado y no puede recibir materiales',
-                        ];
-                    }
-
-                    // SALIDA del proyecto cerrado origen
-                    $salida = new Salidas();
-                    $salida->fecha = Carbon::parse($request->fecha);
-                    $salida->descripcion = $request->descripcion ?? $reserva->descripcion;
-                    $salida->id_tipoproyecto = $reserva->id_tipoproyecto;
-                    $salida->es_transferencia = 1;
-                    $salida->id_tipoproyecto_transferencia = $idDestino;
-                    $salida->save();
-
-                    // DETALLE SALIDA
-                    $salidaDet = new SalidasDetalle();
-                    $salidaDet->id_salida = $salida->id;
-                    $salidaDet->id_entrada_detalle = $reserva->id_entrada_detalle;
-                    $salidaDet->cantidad_salida = $reserva->cantidad;
-                    $salidaDet->save();
-
-                    // ENTRADA al proyecto destino
-                    $entrada = new Entradas();
-                    $entrada->id_tipoproyecto = $idDestino;
-                    $entrada->fecha = Carbon::parse($request->fecha);
-                    $entrada->descripcion = $request->descripcion ?? $reserva->descripcion;
-                    $entrada->es_transferencia = 1;
-                    $entrada->id_tipoproyecto_transferencia = $reserva->id_tipoproyecto;
-                    $entrada->save();
-
-                    // DETALLE ENTRADA
-                    $entradaDet = new EntradasDetalle();
-                    $entradaDet->id_entradas = $entrada->id;
-                    $entradaDet->id_material = $entradaDetalle->id_material;
-                    $entradaDet->cantidad_inicial = $reserva->cantidad;
-                    $entradaDet->precio = $entradaDetalle->precio;
-                    $entradaDet->codigo = $entradaDetalle->codigo;
-                    $entradaDet->nombre = $nombreMaterial;
-                    $entradaDet->save();
-
-                    // HISTORIAL TRANSFERENCIA
-                    $transferencia = new Transferencia();
-                    $transferencia->id_tipoproyecto = $idDestino;
-                    $transferencia->id_tipoproyecto_origen = $reserva->id_tipoproyecto;
-                    $transferencia->id_salida = $salida->id;
-                    $transferencia->id_entrada = $entrada->id;
-                    $transferencia->fecha = Carbon::parse($request->fecha);
-                    $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
-                    $transferencia->documento = null;
-                    $transferencia->tipo_salida = 'proyecto';
-                    $transferencia->origen_registro = 'reserva';
-                    $transferencia->save();
-
-                    // HISTORIAL DETALLE
-                    $transDet = new TransferenciaDetalle();
-                    $transDet->id_transferencia = $transferencia->id;
-                    $transDet->id_entrada_detalle = $reserva->id_entrada_detalle;
-                    $transDet->cantidad_sobrante = $reserva->cantidad;
-                    $transDet->precio = $entradaDetalle->precio;
-                    $transDet->nombre_material = $nombreMaterial;
-                    $transDet->save();
-
-                    // MARCAR RESERVA DESPACHADA
-                    $reserva->despachado = 1;
-                    $reserva->tipo_destino = 'proyecto';
-                    $reserva->fecha_despacho = Carbon::parse($request->fecha);
-                    $reserva->id_tipoproyecto_destino = $idDestino;
-                    $reserva->id_salida = $salida->id;
-                    $reserva->id_entrada = $entrada->id;
-                    $reserva->save();
-
-                }
-                // ==========================================================
-                // SALIDA GENERAL
-                // ==========================================================
-                elseif ($tipoDestino === 'general') {
-
-                    // SALIDA del proyecto cerrado origen
-                    $salida = new Salidas();
-                    $salida->fecha = Carbon::parse($request->fecha);
-                    $salida->descripcion = $request->descripcion ?? $reserva->descripcion;
-                    $salida->id_tipoproyecto = $reserva->id_tipoproyecto;
-                    $salida->es_transferencia = 0;
-                    $salida->save();
-
-                    // DETALLE SALIDA
-                    $salidaDet = new SalidasDetalle();
-                    $salidaDet->id_salida = $salida->id;
-                    $salidaDet->id_entrada_detalle = $reserva->id_entrada_detalle;
-                    $salidaDet->cantidad_salida = $reserva->cantidad;
-                    $salidaDet->save();
-
-                    // HISTORIAL TRANSFERENCIA
-                    $transferencia = new Transferencia();
-                    $transferencia->id_tipoproyecto = null;
-                    $transferencia->id_tipoproyecto_origen = $reserva->id_tipoproyecto;
-                    $transferencia->id_salida = $salida->id;
-                    $transferencia->id_entrada = null;
-                    $transferencia->fecha = Carbon::parse($request->fecha);
-                    $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
-                    $transferencia->documento = null;
-                    $transferencia->tipo_salida = 'general';
-                    $transferencia->origen_registro = 'reserva';
-                    $transferencia->save();
-
-                    // HISTORIAL DETALLE
-                    $transDet = new TransferenciaDetalle();
-                    $transDet->id_transferencia = $transferencia->id;
-                    $transDet->id_entrada_detalle = $reserva->id_entrada_detalle;
-                    $transDet->cantidad_sobrante = $reserva->cantidad;
-                    $transDet->precio = $entradaDetalle->precio;
-                    $transDet->nombre_material = $nombreMaterial;
-                    $transDet->save();
-
-                    // MARCAR RESERVA DESPACHADA
-                    $reserva->despachado = 1;
-                    $reserva->tipo_destino = 'general';
-                    $reserva->fecha_despacho = Carbon::parse($request->fecha);
-                    $reserva->id_tipoproyecto_destino = null;
-                    $reserva->id_salida = $salida->id;
-                    $reserva->id_entrada = null;
-                    $reserva->save();
+                    return $resultado;
                 }
             }
 
@@ -368,6 +226,345 @@ class ReservasController extends Controller
             DB::rollback();
             return ['success' => 99];
         }
+    }
+
+    // =========================================================================
+    // DESPACHAR COMO GRUPO
+    // Una sola Salida + múltiples SalidasDetalle (y una Entrada si es proyecto)
+    // =========================================================================
+    private function despacharComoGrupo(array $items, Request $request): mixed
+    {
+        // Tomamos tipo destino e idDestino del primer item
+        // (el frontend garantiza que todos tienen el mismo destino cuando es grupo)
+        $primerItem = $items[0];
+        $tipoDestino = $primerItem['tipoDestino'];
+        $idDestino = $primerItem['idDestino'] ?? null;
+
+        // Obtener proyecto origen desde la primera reserva
+        $primeraReserva = Reserva::find($primerItem['idReserva']);
+        if (!$primeraReserva || $primeraReserva->despachado) {
+            return ['success' => 2, 'msg' => 'Reserva no encontrada o ya despachada'];
+        }
+
+        $idProyectoOrigen = $primeraReserva->id_tipoproyecto;
+
+        // ── Si es "liberar", todas se liberan individualmente (no hay Salida) ──
+        if ($tipoDestino === 'liberar') {
+            foreach ($items as $d) {
+                $reserva = Reserva::find($d['idReserva']);
+                if (!$reserva || $reserva->despachado) {
+                    return ['success' => 2, 'msg' => 'Reserva no encontrada o ya despachada'];
+                }
+                $reserva->despachado = 1;
+                $reserva->tipo_destino = 'liberada';
+                $reserva->fecha_despacho = Carbon::parse($request->fecha);
+                $reserva->id_tipoproyecto_destino = null;
+                $reserva->id_salida = null;
+                $reserva->id_entrada = null;
+                $reserva->save();
+            }
+            return true;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Crear documentos maestros (una vez para todo el grupo)
+        // ─────────────────────────────────────────────────────────────────────
+        $salida = null;
+        $entrada = null;
+        $transferencia = null;
+
+        // ── TRANSFERENCIA A PROYECTO ──────────────────────────────────────────
+        if ($tipoDestino === 'proyecto' && $idDestino) {
+
+            $proyDestino = TipoProyecto::find($idDestino);
+            if (!$proyDestino || $proyDestino->transferido == 1) {
+                return [
+                    'success' => 4,
+                    'msg' => 'El proyecto destino está cerrado y no puede recibir materiales',
+                ];
+            }
+
+            // Salida del proyecto origen
+            $salida = new Salidas();
+            $salida->fecha = Carbon::parse($request->fecha);
+            $salida->descripcion = $request->descripcion;
+            $salida->id_tipoproyecto = $idProyectoOrigen;
+            $salida->es_transferencia = 1;
+            $salida->id_tipoproyecto_transferencia = $idDestino;
+            $salida->save();
+
+            // Entrada al proyecto destino
+            $entrada = new Entradas();
+            $entrada->id_tipoproyecto = $idDestino;
+            $entrada->fecha = Carbon::parse($request->fecha);
+            $entrada->descripcion = $request->descripcion;
+            $entrada->es_transferencia = 1;
+            $entrada->id_tipoproyecto_transferencia = $idProyectoOrigen;
+            $entrada->save();
+
+            // Historial transferencia
+            $transferencia = new Transferencia();
+            $transferencia->id_tipoproyecto = $idDestino;
+            $transferencia->id_tipoproyecto_origen = $idProyectoOrigen;
+            $transferencia->id_salida = $salida->id;
+            $transferencia->id_entrada = $entrada->id;
+            $transferencia->fecha = Carbon::parse($request->fecha);
+            $transferencia->descripcion = $request->descripcion;
+            $transferencia->documento = null;
+            $transferencia->tipo_salida = 'proyecto';
+            $transferencia->origen_registro = 'reserva';
+            $transferencia->save();
+
+            // ── SALIDA GENERAL ────────────────────────────────────────────────────
+        } elseif ($tipoDestino === 'general') {
+
+            $salida = new Salidas();
+            $salida->fecha = Carbon::parse($request->fecha);
+            $salida->descripcion = $request->descripcion;
+            $salida->id_tipoproyecto = $idProyectoOrigen;
+            $salida->es_transferencia = 0;
+            $salida->save();
+
+            $transferencia = new Transferencia();
+            $transferencia->id_tipoproyecto = null;
+            $transferencia->id_tipoproyecto_origen = $idProyectoOrigen;
+            $transferencia->id_salida = $salida->id;
+            $transferencia->id_entrada = null;
+            $transferencia->fecha = Carbon::parse($request->fecha);
+            $transferencia->descripcion = $request->descripcion;
+            $transferencia->documento = null;
+            $transferencia->tipo_salida = 'general';
+            $transferencia->origen_registro = 'reserva';
+            $transferencia->save();
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Iterar reservas: agregar detalles a los documentos maestros
+        // ─────────────────────────────────────────────────────────────────────
+        foreach ($items as $d) {
+            $reserva = Reserva::find($d['idReserva']);
+            if (!$reserva || $reserva->despachado) {
+                return ['success' => 2, 'msg' => 'Reserva no encontrada o ya despachada'];
+            }
+
+            $entradaDetalle = EntradasDetalle::find($reserva->id_entrada_detalle);
+            if (!$entradaDetalle) {
+                return ['success' => 2, 'msg' => 'Material no encontrado'];
+            }
+
+            $infoMaterial = Materiales::find($entradaDetalle->id_material);
+            $nombreMaterial = $infoMaterial
+                ? $infoMaterial->nombre
+                : ($entradaDetalle->nombre ?? '—');
+
+            // Detalle salida
+            $salidaDet = new SalidasDetalle();
+            $salidaDet->id_salida = $salida->id;
+            $salidaDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $salidaDet->cantidad_salida = $reserva->cantidad;
+            $salidaDet->save();
+
+            // Detalle entrada (solo proyecto)
+            if ($tipoDestino === 'proyecto' && $entrada) {
+                $entradaDet = new EntradasDetalle();
+                $entradaDet->id_entradas = $entrada->id;
+                $entradaDet->id_material = $entradaDetalle->id_material;
+                $entradaDet->cantidad_inicial = $reserva->cantidad;
+                $entradaDet->precio = $entradaDetalle->precio;
+                $entradaDet->codigo = $entradaDetalle->codigo;
+                $entradaDet->nombre = $nombreMaterial;
+                $entradaDet->save();
+            }
+
+            // Detalle transferencia
+            $transDet = new TransferenciaDetalle();
+            $transDet->id_transferencia = $transferencia->id;
+            $transDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $transDet->cantidad_sobrante = $reserva->cantidad;
+            $transDet->precio = $entradaDetalle->precio;
+            $transDet->nombre_material = $nombreMaterial;
+            $transDet->save();
+
+            // Marcar reserva despachada
+            $reserva->despachado = 1;
+            $reserva->tipo_destino = $tipoDestino;
+            $reserva->fecha_despacho = Carbon::parse($request->fecha);
+            $reserva->id_tipoproyecto_destino = ($tipoDestino === 'proyecto') ? $idDestino : null;
+            $reserva->id_salida = $salida->id;
+            $reserva->id_entrada = $entrada?->id;
+            $reserva->save();
+        }
+
+        return true;
+    }
+
+    // =========================================================================
+    // DESPACHAR INDIVIDUAL
+    // Una Salida por cada reserva (comportamiento original)
+    // =========================================================================
+    private function despacharIndividual(array $items, Request $request): mixed
+    {
+        foreach ($items as $d) {
+            $resultado = $this->procesarReservaUnica($d, $request);
+            if ($resultado !== true) {
+                return $resultado;
+            }
+        }
+        return true;
+    }
+
+    // =========================================================================
+    // PROCESAR UNA SOLA RESERVA (lógica original intacta)
+    // =========================================================================
+    private function procesarReservaUnica(array $d, Request $request): mixed
+    {
+        $idReserva = $d['idReserva'];
+        $tipoDestino = $d['tipoDestino'];
+        $idDestino = $d['idDestino'] ?? null;
+
+        $reserva = Reserva::find($idReserva);
+        if (!$reserva || $reserva->despachado) {
+            return ['success' => 2, 'msg' => 'Reserva no encontrada o ya despachada'];
+        }
+
+        // ── Liberar (cancelar) ────────────────────────────────────────────────
+        if ($tipoDestino === 'liberar') {
+            $reserva->despachado = 1;
+            $reserva->tipo_destino = 'liberada';
+            $reserva->fecha_despacho = Carbon::parse($request->fecha);
+            $reserva->id_tipoproyecto_destino = null;
+            $reserva->id_salida = null;
+            $reserva->id_entrada = null;
+            $reserva->save();
+            return true;
+        }
+
+        $entradaDetalle = EntradasDetalle::find($reserva->id_entrada_detalle);
+        if (!$entradaDetalle) {
+            return ['success' => 2, 'msg' => 'Material no encontrado'];
+        }
+
+        $infoMaterial = Materiales::find($entradaDetalle->id_material);
+        $nombreMaterial = $infoMaterial
+            ? $infoMaterial->nombre
+            : ($entradaDetalle->nombre ?? '—');
+
+        // ── Transferencia a proyecto ──────────────────────────────────────────
+        if ($tipoDestino === 'proyecto' && $idDestino) {
+
+            $proyDestino = TipoProyecto::find($idDestino);
+            if (!$proyDestino || $proyDestino->transferido == 1) {
+                return [
+                    'success' => 4,
+                    'msg' => 'El proyecto destino está cerrado y no puede recibir materiales',
+                ];
+            }
+
+            $salida = new Salidas();
+            $salida->fecha = Carbon::parse($request->fecha);
+            $salida->descripcion = $request->descripcion ?? $reserva->descripcion;
+            $salida->id_tipoproyecto = $reserva->id_tipoproyecto;
+            $salida->es_transferencia = 1;
+            $salida->id_tipoproyecto_transferencia = $idDestino;
+            $salida->save();
+
+            $salidaDet = new SalidasDetalle();
+            $salidaDet->id_salida = $salida->id;
+            $salidaDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $salidaDet->cantidad_salida = $reserva->cantidad;
+            $salidaDet->save();
+
+            $entrada = new Entradas();
+            $entrada->id_tipoproyecto = $idDestino;
+            $entrada->fecha = Carbon::parse($request->fecha);
+            $entrada->descripcion = $request->descripcion ?? $reserva->descripcion;
+            $entrada->es_transferencia = 1;
+            $entrada->id_tipoproyecto_transferencia = $reserva->id_tipoproyecto;
+            $entrada->save();
+
+            $entradaDet = new EntradasDetalle();
+            $entradaDet->id_entradas = $entrada->id;
+            $entradaDet->id_material = $entradaDetalle->id_material;
+            $entradaDet->cantidad_inicial = $reserva->cantidad;
+            $entradaDet->precio = $entradaDetalle->precio;
+            $entradaDet->codigo = $entradaDetalle->codigo;
+            $entradaDet->nombre = $nombreMaterial;
+            $entradaDet->save();
+
+            $transferencia = new Transferencia();
+            $transferencia->id_tipoproyecto = $idDestino;
+            $transferencia->id_tipoproyecto_origen = $reserva->id_tipoproyecto;
+            $transferencia->id_salida = $salida->id;
+            $transferencia->id_entrada = $entrada->id;
+            $transferencia->fecha = Carbon::parse($request->fecha);
+            $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
+            $transferencia->documento = null;
+            $transferencia->tipo_salida = 'proyecto';
+            $transferencia->origen_registro = 'reserva';
+            $transferencia->save();
+
+            $transDet = new TransferenciaDetalle();
+            $transDet->id_transferencia = $transferencia->id;
+            $transDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $transDet->cantidad_sobrante = $reserva->cantidad;
+            $transDet->precio = $entradaDetalle->precio;
+            $transDet->nombre_material = $nombreMaterial;
+            $transDet->save();
+
+            $reserva->despachado = 1;
+            $reserva->tipo_destino = 'proyecto';
+            $reserva->fecha_despacho = Carbon::parse($request->fecha);
+            $reserva->id_tipoproyecto_destino = $idDestino;
+            $reserva->id_salida = $salida->id;
+            $reserva->id_entrada = $entrada->id;
+            $reserva->save();
+
+            // ── Salida general ────────────────────────────────────────────────────
+        } elseif ($tipoDestino === 'general') {
+
+            $salida = new Salidas();
+            $salida->fecha = Carbon::parse($request->fecha);
+            $salida->descripcion = $request->descripcion ?? $reserva->descripcion;
+            $salida->id_tipoproyecto = $reserva->id_tipoproyecto;
+            $salida->es_transferencia = 0;
+            $salida->save();
+
+            $salidaDet = new SalidasDetalle();
+            $salidaDet->id_salida = $salida->id;
+            $salidaDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $salidaDet->cantidad_salida = $reserva->cantidad;
+            $salidaDet->save();
+
+            $transferencia = new Transferencia();
+            $transferencia->id_tipoproyecto = null;
+            $transferencia->id_tipoproyecto_origen = $reserva->id_tipoproyecto;
+            $transferencia->id_salida = $salida->id;
+            $transferencia->id_entrada = null;
+            $transferencia->fecha = Carbon::parse($request->fecha);
+            $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
+            $transferencia->documento = null;
+            $transferencia->tipo_salida = 'general';
+            $transferencia->origen_registro = 'reserva';
+            $transferencia->save();
+
+            $transDet = new TransferenciaDetalle();
+            $transDet->id_transferencia = $transferencia->id;
+            $transDet->id_entrada_detalle = $reserva->id_entrada_detalle;
+            $transDet->cantidad_sobrante = $reserva->cantidad;
+            $transDet->precio = $entradaDetalle->precio;
+            $transDet->nombre_material = $nombreMaterial;
+            $transDet->save();
+
+            $reserva->despachado = 1;
+            $reserva->tipo_destino = 'general';
+            $reserva->fecha_despacho = Carbon::parse($request->fecha);
+            $reserva->id_tipoproyecto_destino = null;
+            $reserva->id_salida = $salida->id;
+            $reserva->id_entrada = null;
+            $reserva->save();
+        }
+
+        return true;
     }
 
 

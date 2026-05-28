@@ -126,6 +126,59 @@
         }
         .modo-hint.activo  { background: #e6f7ef; color: #0b7a4f; }
         .modo-hint.cerrado { background: #fdeee6; color: #b35417; }
+
+        /* Toggle switch existencia cero */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 2px solid #e8eef8;
+            background: #f8fafc;
+            margin-top: 4px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #ccc;
+            border-radius: 24px;
+            transition: .2s;
+        }
+        .toggle-slider:before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .2s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #1f9e6f; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .toggle-desc {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            line-height: 1.4;
+        }
+        .toggle-desc small {
+            display: block;
+            font-weight: 400;
+            color: #9aa5b1;
+            font-size: 10px;
+        }
     </style>
 
     {{-- Formulario oculto para POST --}}
@@ -134,10 +187,11 @@
           method="POST"
           target="_blank">
         @csrf
-        <input type="hidden" name="idproy"  id="h-idproy">
-        <input type="hidden" name="estado"  id="h-estado">
-        <input type="hidden" name="desde"   id="h-desde">
-        <input type="hidden" name="hasta"   id="h-hasta">
+        <input type="hidden" name="idproy"          id="h-idproy">
+        <input type="hidden" name="estado"          id="h-estado">
+        <input type="hidden" name="desde"           id="h-desde">
+        <input type="hidden" name="hasta"           id="h-hasta">
+        <input type="hidden" name="mostrar_cero"    id="h-mostrar-cero" value="0">
     </form>
 
     <div id="divcontenedor">
@@ -188,7 +242,6 @@
                                     </select>
                                 </div>
 
-
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group">
@@ -208,21 +261,34 @@
                                     </div>
                                 </div>
 
+                                {{-- ── Toggle: mostrar filas con existencia 0 ── --}}
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-filter mr-1"></i>Opciones de visualización
+                                    </label>
+                                    <div class="toggle-wrap">
+                                        <label class="toggle-switch" style="margin:0">
+                                            <input type="checkbox" id="chk-mostrar-cero">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <div class="toggle-desc">
+                                            Incluir materiales con existencia final en 0
+                                            <small>Por defecto solo se muestran materiales con saldo actual mayor a 0</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <button type="button" onclick="generarPDF()" class="btn-pdf">
                                     <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                     Generar PDF
                                 </button>
 
-
                                 <div class="card mt-4">
                                     <div class="card-header bg-primary">
                                         <h5 class="mb-0">Firmas del Reporte</h5>
                                     </div>
-
                                     <div class="card-body">
-
                                         <div class="row">
-
                                             <div class="col-md-5">
                                                 <div class="form-group">
                                                     <label>1 - Encargado de bodega de proyecto:</label>
@@ -234,7 +300,6 @@
                                                            placeholder="Ingrese nombre">
                                                 </div>
                                             </div>
-
                                             <div class="col-md-4">
                                                 <div class="form-group">
                                                     <label>2 - Jefe Inmediato:</label>
@@ -246,16 +311,13 @@
                                                            placeholder="Ingrese nombre">
                                                 </div>
                                             </div>
-
                                         </div>
-
                                         <div class="text-right">
                                             <button class="btn btn-primary"
                                                     onclick="actualizarFirmasReporte()">
                                                 Guardar
                                             </button>
                                         </div>
-
                                     </div>
                                 </div>
 
@@ -276,53 +338,33 @@
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
 
     <script>
-
-
         var estadoActual = 'activo';
 
-        // ── Formato con badge rojo si está cerrado ────────────────────────
         function formatProyecto(option) {
-
             if (!option.id) return option.text;
-
             var esCerrado = $(option.element).data('cerrado');
-
             if (parseInt(esCerrado) === 1) {
                 return $(`
-            <span>
-                ${option.text}
-                <span style="
-                    background:#dc3545;
-                    color:#fff;
-                    font-size:10px;
-                    font-weight:700;
-                    padding:2px 7px;
-                    border-radius:4px;
-                    margin-left:6px;">
-                    CERRADO
-                </span>
-            </span>
-        `);
+                    <span>
+                        ${option.text}
+                        <span style="background:#dc3545;color:#fff;font-size:10px;font-weight:700;
+                                     padding:2px 7px;border-radius:4px;margin-left:6px;">CERRADO</span>
+                    </span>
+                `);
             }
-
             return $('<span>' + option.text + '</span>');
         }
 
         $(document).ready(function () {
-
             document.getElementById("divcontenedor").style.display = "block";
 
             $('#sel-proyecto').select2({
                 theme: "bootstrap-5",
                 templateResult: formatProyecto,
                 templateSelection: formatProyecto,
-                escapeMarkup: function(markup) {
-                    return markup;
-                },
+                escapeMarkup: function(markup) { return markup; },
                 language: {
-                    noResults: function () {
-                        return "Búsqueda no encontrada";
-                    }
+                    noResults: function () { return "Búsqueda no encontrada"; }
                 }
             });
 
@@ -331,13 +373,9 @@
             });
         });
 
-
-
         function cambiarEstado(estado) {
             estadoActual = estado;
-
             $('.estado-tab').removeClass('active cerrado');
-
             if (estado === 'cerrado') {
                 $('#tab-cerrado').addClass('active cerrado');
                 $('#modo-hint').removeClass('activo').addClass('cerrado')
@@ -354,9 +392,10 @@
         }
 
         function generarPDF() {
-            var idproy = $('#sel-proyecto').val();
-            var desde  = $('#inp-desde').val();
-            var hasta  = $('#inp-hasta').val();
+            var idproy     = $('#sel-proyecto').val();
+            var desde      = $('#inp-desde').val();
+            var hasta      = $('#inp-hasta').val();
+            var mostrarCero = $('#chk-mostrar-cero').is(':checked') ? '1' : '0';
 
             if (!idproy) { toastr.error('Seleccione un proyecto'); return; }
             if (!desde)  { toastr.error('Seleccione la fecha "Desde"'); return; }
@@ -370,44 +409,27 @@
             $('#h-estado').val(estadoActual);
             $('#h-desde').val(desde);
             $('#h-hasta').val(hasta);
+            $('#h-mostrar-cero').val(mostrarCero);
 
             $('#form-pdf').submit();
         }
 
         function actualizarFirmasReporte() {
-
             openLoading();
-
             axios.post(urlAdmin + '/admin/firmas/proyectos/periodos/actualizar', {
                 p_nombre1: document.getElementById('p_nombre1').value.trim(),
                 p_nombre2: document.getElementById('p_nombre2').value.trim(),
             })
                 .then((response) => {
-
                     closeLoading();
-
                     switch (response.data.success) {
-
-                        case 1:
-                            toastr.success('Firmas actualizadas correctamente');
-                            break;
-
-                        case 0:
-                            toastr.error('No se encontró la información');
-                            break;
-
-                        case 99:
-                            toastr.error('Ocurrió un error al actualizar');
-                            break;
-
-                        default:
-                            toastr.error('Error al actualizar');
+                        case 1:  toastr.success('Firmas actualizadas correctamente'); break;
+                        case 0:  toastr.error('No se encontró la información'); break;
+                        case 99: toastr.error('Ocurrió un error al actualizar'); break;
+                        default: toastr.error('Error al actualizar');
                     }
                 })
-                .catch(() => {
-                    closeLoading();
-                    toastr.error('Error al actualizar');
-                });
+                .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
         }
     </script>
 @endsection

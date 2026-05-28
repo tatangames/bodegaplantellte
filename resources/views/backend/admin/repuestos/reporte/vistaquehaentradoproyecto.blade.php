@@ -144,6 +144,9 @@
                                 <p style="font-size:13px; color:#666; margin-bottom:14px;">
                                     Materiales que han salido de un proyecto en un rango de fechas.
                                 </p>
+                                <p style="font-size:13px; color:#666; margin-bottom:14px; font-weight: bold">
+                                    Marca el registro cuando fueron por Transferencia. Todas las salidas de los Materiales
+                                </p>
                                 <hr class="divider">
 
                                 <div class="fecha-row">
