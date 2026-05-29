@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * OBJ ESPECIFICO - CODIGOS
      */
     public function up(): void
     {

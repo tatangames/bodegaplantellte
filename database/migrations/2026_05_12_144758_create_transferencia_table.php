@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('transferencia', function (Blueprint $table) {
             $table->id();
 
-            $table->bigInteger('id_tipoproyecto_origen')->unsigned()->nullable()->after('id_tipoproyecto');
+            $table->bigInteger('id_tipoproyecto_origen')->unsigned()->nullable();
             $table->bigInteger('id_salida')->unsigned()->nullable();
             $table->bigInteger('id_entrada')->unsigned()->nullable();
             $table->bigInteger('id_tipoproyecto')->unsigned()->nullable();
