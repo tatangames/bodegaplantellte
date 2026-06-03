@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Unidades')
+@section('title', 'Equipos')
 
 @section('content_header')
-    <h1>Unidades</h1>
+    <h1>Equipos</h1>
 @stop
 
 
@@ -162,7 +162,7 @@
 
         <script>
             $(function () {
-                const ruta = "{{ url('/admin/departamentos/tabla/index') }}";
+                const ruta = "{{ url('/admin/equipos/tabla/index') }}";
 
                 function initDataTable() {
                     // Si ya hay instancia, destrúyela antes de re-crear
@@ -224,7 +224,7 @@
     <script>
 
         function recargar(){
-            var ruta = "{{ url('/admin/departamentos/tabla/index') }}";
+            var ruta = "{{ url('/admin/equipos/tabla/index') }}";
             $('#tablaDatatable').load(ruta);
         }
 
@@ -245,7 +245,7 @@
             var formData = new FormData();
             formData.append('nombre', nombre);
 
-            axios.post(urlAdmin+'/admin/departamentos/nuevo', formData, {
+            axios.post(urlAdmin+'/admin/equipos/nuevo', formData, {
             })
                 .then((response) => {
                     closeLoading();
@@ -268,7 +268,7 @@
             openLoading();
             document.getElementById("formulario-editar").reset();
 
-            axios.post(urlAdmin+'/admin/departamentos/informacion',{
+            axios.post(urlAdmin+'/admin/equipos/informacion',{
                 'id': id
             })
                 .then((response) => {
@@ -302,7 +302,7 @@
             formData.append('id', id);
             formData.append('nombre', nombre);
 
-            axios.post(urlAdmin+'/admin/departamentos/editar', formData, {
+            axios.post(urlAdmin+'/admin/equipos/editar', formData, {
             })
                 .then((response) => {
                     closeLoading();
@@ -315,7 +315,6 @@
                     else {
                         toastr.error('Error al actualizar');
                     }
-
                 })
                 .catch((error) => {
                     toastr.error('Error al actualizar');

@@ -323,32 +323,6 @@ return [
                 ],
             ],
         ],
-
-        [
-            'text'    => 'Proyectos',
-            'icon'    => 'fas fa-pen-alt',
-            'can'     => 'sidebar.inventario',
-            'submenu' => [
-                [
-                    'text' => 'Lista de Proyectos',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.tiposproyecto.index',
-                ],
-                [
-                    'text' => 'Cierre de Proyectos',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.transferencias.index',
-                ],
-
-                [
-                    'text' => 'Reservas Pendientes',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.reservas.index',
-                ],
-            ],
-        ],
-
-
         [
             'text'    => 'Inventario',
             'icon'    => 'fas fa-pen-alt',
@@ -365,11 +339,10 @@ return [
                     'route' => 'admin.materiales.index',
                 ],
                 [
-                    'text' => 'Transferencia Materiales',
+                    'text' => 'Lista de Equipos',
                     'icon' => 'far fa-circle',
-                    'route' => 'admin.transferencias.materiales.index',
+                    'route' => 'admin.equipos.index',
                 ],
-
             ],
         ],
 
@@ -408,11 +381,7 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.historial.salidas.index',
                 ],
-                [
-                    'text' => 'Transferencias',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.historial.transferencias.index',
-                ],
+
             ],
         ],
 
@@ -436,11 +405,7 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.objetoespecifico.index',
                 ],
-                [
-                    'text' => 'Unidades',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.departamentos.index',
-                ],
+
             ],
         ],
 
@@ -455,25 +420,7 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.reporte.inventario.entradaproyecto.index',
                 ],
-                [
-                    'text' => 'Inventario Proyecto',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.reporte.inventario.tengoporproyecto.index',
-                ],
 
-
-                [
-                    'text' => 'Proyecto Cerrado',
-                    'icon' => 'far fa-circle',
-                    'route' => 'reporte.proyecto.cerrado.index',
-                ],
-
-
-                [
-                    'text' => 'Por Periodos',
-                    'icon' => 'far fa-circle',
-                    'route' => 'reporte.proyecto.porperiodos.index',
-                ],
 
 
 

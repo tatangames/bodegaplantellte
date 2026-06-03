@@ -13,28 +13,15 @@ return new class extends Migration
     {
         Schema::create('salidas', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('id_tipoproyecto')->unsigned();
+            $table->bigInteger('id_equipo')->unsigned();
             $table->date('fecha');
             $table->string('descripcion', 800)->nullable();
 
-            $table->boolean('es_transferencia')->default(false);
-            // SABER A DONDE MANDE ESTE MATERIAL (X PROYECTO)
-            $table->bigInteger('id_tipoproyecto_transferencia')->unsigned()->nullable();
+            // FICHA DE SALIDA
+            $table->string('ficha_nombre', 100)->nullable();
+            $table->string('ficha_talonario', 100)->nullable();
 
-            $table->string('acta_numero', 50)->nullable();
-            $table->string('acta_referencia', 200)->nullable();
-            $table->bigInteger('acta_id_departamento')->unsigned()->nullable();
-            $table->string('acta_nombre_solic', 200)->nullable();
-            $table->string('acta_cargo_solic', 200)->nullable();
-            $table->text('acta_observaciones')->nullable();
-            $table->string('acta_tipo_destino', 300)->nullable();
-
-            // TRANSFERENCIA DE PROYECTO, NOMBRES PARA LAS FIRMAS
-            $table->string('firma_1', 200)->nullable();
-            $table->string('firma_2', 200)->nullable();
-
-            $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
-            $table->foreign('id_tipoproyecto_transferencia')->references('id')->on('tipoproyecto');
+            $table->foreign('id_equipo')->references('id')->on('equipos');
         });
     }
 

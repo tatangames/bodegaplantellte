@@ -7,16 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
-     */
+     * TIPO DE COMPRA
+     * * - PROCESO DE COMPRA
+     * * - CAJA CHICA
+ */
     public function up(): void
     {
-        Schema::create('informacion_general', function (Blueprint $table) {
+        Schema::create('tipo_compra', function (Blueprint $table) {
             $table->id();
-
-            // REPORTE PIXELES DISTANCIAS
-            $table->integer('px_firmas');
-            $table->integer('px_observaciones');
+            $table->string('nombre', 100);
         });
     }
 
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('informacion_general');
+        Schema::dropIfExists('tipo_compra');
     }
 };

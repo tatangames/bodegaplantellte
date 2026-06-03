@@ -24,7 +24,7 @@ class RolesSeeder extends Seeder
 
         // solo para administrador
         Permission::create(['name' => 'sidebar.roles.y.permisos', 'description' => 'sidebar seccion roles y permisos'])->syncRoles($roleAdmin);
-        Permission::create(['name' => 'sidebar.catalogo', 'description' => 'contenedor de catalogo'])->syncRoles($roleInventario);
+        Permission::create(['name' => 'sidebar.inventario', 'description' => 'contenedor de catalogo'])->syncRoles($roleInventario);
 
 
 

@@ -22,6 +22,7 @@ return new class extends Migration
             // 4 DECIMALES PARA PRECIO UNITARIO
             $table->decimal('precio', 10,4)->default(0);
 
+            // PUEDE SER COMO DETALLE DEL EMPAQUE O CUALQUIER COSA
             $table->string('codigo', 100)->nullable();
 
             // copia nombre material

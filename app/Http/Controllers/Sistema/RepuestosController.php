@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sistema;
 use App\Http\Controllers\Controller;
 use App\Models\Entradas;
 use App\Models\EntradasDetalle;
+use App\Models\Equipos;
 use App\Models\Herramientas;
 use App\Models\HistoHerramientaDescartada;
 use App\Models\HistorialEntradas;
@@ -12,6 +13,8 @@ use App\Models\HistorialEntradasDeta;
 use App\Models\Materiales;
 use App\Models\ObjetoEspecifico;
 use App\Models\SalidasDetalle;
+use App\Models\TipoCompra;
+use App\Models\TipoEntrada;
 use App\Models\TipoProyecto;
 use App\Models\UnidadMedida;
 use Carbon\Carbon;
@@ -36,10 +39,9 @@ class RepuestosController extends Controller
 
     public function tablaMateriales()
     {
-        $filtro = request('filtro', 'todos'); // 'todos' | 'sin_objeto'
+        $filtro = request('filtro', 'todos');
 
-        $query = Materiales::with('objetoEspecifico')
-            ->orderBy('nombre', 'ASC');
+        $query = Materiales::with('objetoEspecifico')->orderBy('nombre', 'ASC');
 
         if ($filtro === 'sin_objeto') {
             $query->whereNull('id_objespecifico');
@@ -47,12 +49,11 @@ class RepuestosController extends Controller
 
         $lista = $query->get();
 
+        // Una sola query para todas las unidades
+        $unidades = UnidadMedida::pluck('nombre', 'id');
+
         foreach ($lista as $item) {
-            $medida = '';
-            if ($dataUnidad = UnidadMedida::where('id', $item->id_medida)->first()) {
-                $medida = $dataUnidad->nombre;
-            }
-            $item->medida = $medida;
+            $item->medida = $unidades[$item->id_medida] ?? '';
 
             $entradas = DB::table('entradas_detalle')
                 ->where('id_material', $item->id)
@@ -63,11 +64,10 @@ class RepuestosController extends Controller
                 ->where('ed.id_material', $item->id)
                 ->sum('sd.cantidad_salida');
 
-            $item->total    = $entradas - $salidas;
             $item->entradas = $entradas;
             $item->salidas  = $salidas;
+            $item->total    = $entradas - $salidas;
 
-            // Relación ya cargada con with()
             $item->objeto_especifico = $item->objetoEspecifico;
         }
 
@@ -135,13 +135,13 @@ class RepuestosController extends Controller
 
     //*******************************************************************
 
-    public function indexRegistroEntrada(){
+    public function indexRegistroEntrada()
+    {
+        $arrayTipoEntrada = TipoEntrada::orderBy('nombre')->get();
+        $arrayTipoCompra  = TipoCompra::orderBy('nombre')->get();
 
-        $arrayProyecto = TipoProyecto::where('transferido', 0)
-            ->orderBy('nombre')
-            ->get();
-
-        return view('backend.admin.repuestos.registros.vistaentradaregistro', compact('arrayProyecto'));
+        return view('backend.admin.repuestos.registros.vistaentradaregistro',
+            compact('arrayTipoEntrada', 'arrayTipoCompra'));
     }
 
 
@@ -195,20 +195,14 @@ class RepuestosController extends Controller
     // GUARDAR ENTRADAS
     public function guardarEntrada(Request $request)
     {
-        $rules = [
-            'fecha'     => 'required',
-            'tipoproyecto' => 'required',
-        ];
+        $validator = Validator::make($request->all(), [
+            'fecha'        => 'required|date',
+            'tipoentrada'  => 'required',
+            'tipocompra'   => 'required',
+        ]);
 
-        $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
             return ['success' => 0];
-        }
-
-        // ── Validar que el proyecto no esté cerrado ──
-        $proyecto = Tipoproyecto::find($request->tipoproyecto);
-        if (!$proyecto || $proyecto->transferido == 1) {
-            return ['success' => 2]; // proyecto cerrado o no existe
         }
 
         DB::beginTransaction();
@@ -216,24 +210,28 @@ class RepuestosController extends Controller
         try {
             $datosContenedor = json_decode($request->contenedorArray, true);
 
+            if (empty($datosContenedor)) {
+                return ['success' => 0];
+            }
+
             // ── Cabecera ──
-            $registro = new Entradas();
-            $registro->id_tipoproyecto = $request->tipoproyecto;
-            $registro->fecha = Carbon::parse($request->fecha);
-            $registro->descripcion = $request->descripcion;
-            $registro->factura = $request->lote;
-            $registro->es_transferencia = 0;
-            $registro->id_tipoproyecto_transferencia = null;
-            $registro->save();
+            $entrada = new Entradas();
+            $entrada->id_tipoentrada = $request->tipoentrada;
+            $entrada->id_tipocompra  = $request->tipocompra;
+            $entrada->fecha          = $request->fecha;
+            $entrada->factura        = $request->factura;
+            $entrada->descripcion    = $request->descripcion;
+            $entrada->save();
 
             // ── Detalle ──
             foreach ($datosContenedor as $fila) {
                 $detalle = new EntradasDetalle();
-                $detalle->id_entradas        = $registro->id;
-                $detalle->id_material        = $fila['idMaterial'];
-                $detalle->cantidad_inicial   = $fila['infoCantidad'];
-                $detalle->precio             = $fila['infoPrecio'];
-                $detalle->codigo             = $fila['infoCodigo'];
+                $detalle->id_entradas      = $entrada->id;
+                $detalle->id_material      = $fila['idMaterial'];
+                $detalle->cantidad_inicial = $fila['infoCantidad'];
+                $detalle->precio           = $fila['infoPrecio'];
+                $detalle->codigo           = $fila['infoCodigo'];
+                $detalle->nombre           = $fila['infoNombre'];
                 $detalle->save();
             }
 
@@ -241,14 +239,14 @@ class RepuestosController extends Controller
             return ['success' => 1];
 
         } catch (\Throwable $e) {
-            Log::error('guardarEntrada: ' . $e);
             DB::rollback();
+            Log::error('guardarEntrada: ' . $e);
             return ['success' => 99];
         }
     }
 
 
-    public function proyectosPorMaterial(Request $request)
+    public function inventarioConteoDeMateriales(Request $request)
     {
         $idMaterial = $request->id;
 
@@ -256,70 +254,19 @@ class RepuestosController extends Controller
         $idsEntradasDetalle = EntradasDetalle::where('id_material', $idMaterial)
             ->pluck('id');
 
-        // Entradas por proyecto
-        $entradas = EntradasDetalle::where('id_material', $idMaterial)
-            ->with('entrada.tipoproyecto')
-            ->get()
-            ->groupBy(fn($item) => $item->entrada->id_tipoproyecto)
-            ->map(function ($grupo) {
+        // Total de unidades que entraron
+        $totalEntradas = EntradasDetalle::where('id_material', $idMaterial)
+            ->sum('cantidad_inicial');
 
-                // Total de unidades que entraron al proyecto (real + transferencia)
-                $entradasTotal = $grupo->sum('cantidad_inicial');
-
-                // Solo las que son ingreso REAL (no transferencia) — cuentan al total general
-                $entradasReales = $grupo
-                    ->filter(fn($item) => ! $item->entrada->es_transferencia)
-                    ->sum('cantidad_inicial');
-
-                return [
-                    'proyecto'        => $grupo->first()->entrada->tipoproyecto->nombre ?? '—',
-                    'entradas'        => $entradasTotal,
-                    'entradas_reales' => $entradasReales,
-                ];
-            });
-
-        // Salidas por proyecto usando whereIn
-        $salidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
-            ->with('salida.tipoproyecto')
-            ->get()
-            ->groupBy(fn($item) => $item->salida->id_tipoproyecto)
-            ->map(fn($grupo) => $grupo->sum('cantidad_salida'));
-
-        // Combinar
-        $proyectos = $entradas->map(function ($dato, $idProyecto) use ($salidas) {
-            $sal = $salidas[$idProyecto] ?? 0;
-            return [
-                'proyecto'        => $dato['proyecto'],
-                'entradas'        => $dato['entradas'],
-                'entradas_reales' => $dato['entradas_reales'],
-                'salidas'         => $sal,
-                'disponible'      => $dato['entradas'] - $sal,
-            ];
-        })
-            ->filter(fn($p) => $p['disponible'] != 0)  // ← solo los que tienen disponible
-            ->values();
-
-        // ── Totales ───────────────────────────────────────────────
-        // El total general usa SOLO las entradas reales (el material físico
-        // que de verdad ingresó). Las transferencias no suman: es el mismo
-        // material moviéndose entre proyectos.
-        $totalEntradas   = $proyectos->sum('entradas_reales');
-        $totalSalidas    = $proyectos->sum('salidas');
-
-        // Salidas por transferencia (las que salieron hacia otro proyecto)
-        // no son consumo real, así que el disponible global es entradas
-        // reales menos las salidas que NO son transferencia.
-        $salidasReales = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
-            ->whereHas('salida', fn($q) => $q->where('es_transferencia', 0))
-            ->get()
+        // Total de unidades que salieron
+        $totalSalidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
             ->sum('cantidad_salida');
 
-        $totalDisponible = $totalEntradas - $salidasReales;
+        $totalDisponible = $totalEntradas - $totalSalidas;
 
         return response()->json([
-            'success'   => 1,
-            'proyectos' => $proyectos,
-            'totales'   => [
+            'success' => 1,
+            'totales' => [
                 'entradas'   => $totalEntradas,
                 'salidas'    => $totalSalidas,
                 'disponible' => $totalDisponible,

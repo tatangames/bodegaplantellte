@@ -9,11 +9,9 @@ use App\Http\Controllers\Sistema\PerfilController;
 use App\Http\Controllers\Sistema\PermisoController;
 use App\Http\Controllers\Sistema\ConfiguracionController;
 use App\Http\Controllers\Sistema\RepuestosController;
-use App\Http\Controllers\Sistema\TipoProyectoController;
 use App\Http\Controllers\Sistema\SalidasController;
 use App\Http\Controllers\Sistema\HistorialController;
 use App\Http\Controllers\Sistema\ReportesController;
-use App\Http\Controllers\Sistema\ReservasController;
 
 
 Route::get('/', [LoginController::class,'vistaLoginForm'])->name('login.admin');
@@ -60,12 +58,12 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/unidadmedida/informacion', [ConfiguracionController::class, 'informacionUnidadMedida']);
     Route::post('/admin/unidadmedida/editar', [ConfiguracionController::class, 'editarUnidadMedida']);
 
-    // --- DEPARTAMENTOS ---
-    Route::get('/admin/departamentos/index', [ConfiguracionController::class,'indexDepartamentos'])->name('admin.departamentos.index');
-    Route::get('/admin/departamentos/tabla/index', [ConfiguracionController::class,'tablaDepartamentos']);
-    Route::post('/admin/departamentos/nuevo', [ConfiguracionController::class, 'nuevaDepartamentos']);
-    Route::post('/admin/departamentos/informacion', [ConfiguracionController::class, 'informacionDepartamentos']);
-    Route::post('/admin/departamentos/editar', [ConfiguracionController::class, 'editarDepartamentos']);
+    // --- EQUIPOS ---
+    Route::get('/admin/equipos/index', [ConfiguracionController::class,'indexEquipos'])->name('admin.equipos.index');
+    Route::get('/admin/equipos/tabla/index', [ConfiguracionController::class,'tablaEquipos']);
+    Route::post('/admin/equipos/nuevo', [ConfiguracionController::class, 'nuevaEquipos']);
+    Route::post('/admin/equipos/informacion', [ConfiguracionController::class, 'informacionEquipos']);
+    Route::post('/admin/equipos/editar', [ConfiguracionController::class, 'editarEquipos']);
 
     // --- RUBRO ---
     Route::get('/admin/rubro/index', [ConfiguracionController::class,'indexRubro'])->name('admin.rubro.index');
@@ -94,30 +92,34 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/inventario/nuevo', [RepuestosController::class, 'nuevoMaterial']);
     Route::post('/admin/inventario/informacion', [RepuestosController::class, 'informacionMaterial']);
     Route::post('/admin/inventario/editar', [RepuestosController::class, 'editarMaterial']);
+    Route::post('/admin/inventario/catalogo', [RepuestosController::class, 'inventarioConteoDeMateriales']);
 
-    // --- REGISTRO DE UN PROYECTO ---
-    Route::get('/admin/proyecto/index', [TipoProyectoController::class,'index'])->name('admin.tiposproyecto.index');
-    Route::get('/admin/proyecto/tabla/index', [TipoProyectoController::class,'tablaProyectos']);
-    Route::post('/admin/proyecto/nuevo', [TipoProyectoController::class, 'nuevoProyecto']);
-    Route::post('/admin/proyecto/informacion', [TipoProyectoController::class, 'informacionProyecto']);
-    Route::post('/admin/proyecto/editar', [TipoProyectoController::class, 'editarProyecto']);
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // --- REGISTRAR ENTRADA ---
     Route::get('/admin/registro/entrada', [RepuestosController::class,'indexRegistroEntrada'])->name('admin.entrada.registro.index');
     Route::post('/admin/buscar/material',  [RepuestosController::class,'buscadorMaterial']);
     Route::post('/admin/entradas/guardar',  [RepuestosController::class,'guardarEntrada']);
-    Route::post('/admin/inventario/proyectos', [RepuestosController::class, 'proyectosPorMaterial']);
+
 
     // --- REGISTRAR SALIDA ---
     Route::get('/admin/registro/salida', [SalidasController::class,'indexRegistroSalida'])->name('admin.salida.registro.index');
     Route::post('/admin/salida/guardar',  [SalidasController::class,'guardarSalida']);
     Route::post('/admin/buscar/material/disponible',  [SalidasController::class,'buscadorMaterialDisponible']);
     Route::post('/admin/buscar/material/disponibilidad', [SalidasController::class, 'infoBodegaMaterialDetalleFila']);
-
-
-    // --- CIERRE DE PROYECTOS ---
-    Route::get('/admin/cierre/proyectos', [SalidasController::class,'indexTransferencias'])->name('admin.transferencias.index');
-    Route::post('/admin/generar/salida/transferencia',  [SalidasController::class,'generarSalidaTransferencia']);
+    Route::post('/admin/reporte/talonario/salida', [ReportesController::class, 'pdfReporteSalidaTalonario']);
 
 
     // --- HISTORIAL / ENTRADAS ---
@@ -129,7 +131,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/entradas/detalle',        [HistorialController::class, 'detalleEntrada']);
     Route::post('/admin/historial/entradas/detalle/editar', [HistorialController::class, 'editarDetalleEntrada']);
     Route::post('/admin/historial/entradas/detalle/eliminar', [HistorialController::class, 'eliminarDetalleEntrada']);
-
 
 
     Route::get('/admin/historial/entradas/extras/{id}', [HistorialController::class, 'vistaExtrasEntrada'])->name('admin.historial.entradas.extras');
@@ -145,19 +146,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/historial/salidas/extras/{id}',      [HistorialController::class, 'vistaExtrasSalida'])->name('admin.historial.salidas.extras');
     Route::post('/admin/historial/salidas/extras/guardar',  [HistorialController::class, 'guardarExtrasSalida']);
 
-    // --- TRANSFERENCIA DE MATERIALES DE PROYECTOS CERRADOS ---
-    Route::get('/admin/transferencia/material/proyectoscerrados', [SalidasController::class,'indexTransferenciasDeProyectosCerrados'])->name('admin.transferencias.materiales.index');
-    Route::post('/admin/transferencia/material/xproyecto', [SalidasController::class,'retirarMaterialDeProyectosCerrados']);
-    // Ruta nueva para cargar materiales del proyecto cerrado
-    Route::post('/admin/transferencia/materiales/cerrado', [SalidasController::class, 'materialesDisponiblesCerrado']);
-    // Agregar esta ruta junto a las demás de reservas
-    Route::post('/admin/reservas/crear', [ReservasController::class, 'crearReserva']);
-
-
-    // --- RESERVAS ---
-    Route::get('/admin/reservas/index', [ReservasController::class,'indexReservasPendientes'])->name('admin.reservas.index');
-    Route::post('/admin/reservas/listar', [ReservasController::class, 'listar']);
-    Route::post('/admin/reservas/despachar', [ReservasController::class, 'despachar']);
 
 
 
@@ -166,38 +154,6 @@ Route::middleware('auth:admin')->group(function () {
 
 
 
-    // --- HISTORIAL / TRANSFERENCIAS ---
-    Route::get('/admin/historial/transferencias', [HistorialController::class, 'indexHistorialTransferencias'])->name('admin.historial.transferencias.index');
-    Route::get('/admin/historial/transferencias/tabla', [HistorialController::class, 'tablaHistorialTransferencias']);
-    Route::post('/admin/historial/transferencias/informacion', [HistorialController::class, 'informacionTransferencia']);
-    Route::post('/admin/historial/transferencias/eliminar', [HistorialController::class, 'eliminarTransferencia']);
-    Route::post('/admin/historial/transferencias/detalle', [HistorialController::class, 'detalleTransferencia']);
-    Route::get('/admin/historial/transferencias/acta/pdf/{id}', [HistorialController::class, 'actaDesdeHistorial']);
-
-
-
-
-
-
-
-
-
-    Route::post('/admin/reporte/form/solicitud/preview',
-        [ReportesController::class, 'formSolicitudPreview'])
-        ->name('reporte.form.solicitud.preview');
-
-    Route::post('/admin/reporte/form003/solicitud/preview',
-        [ReportesController::class, 'form003SolicitudPreview'])
-        ->name('reporte.form003.solicitud.preview');
-
-    Route::post('/admin/reporte/acta/preview',
-        [ReportesController::class, 'actaRecepcionPreview'])
-        ->name('reporte.acta.preview');
-
-
-    Route::post('/admin/reporte/form001/reserva/preview',
-        [ReportesController::class, 'form001ReservaPreview'])
-        ->name('reporte.form001.reserva.preview');
 
 
 
@@ -214,32 +170,8 @@ Route::middleware('auth:admin')->group(function () {
     // --- REPORTE / SALIDA POR PROYECTO
     Route::get('/admin/reporte/quehasalido/proyectos/pdf/{idproy}/{desde}/{hasta}/{tipo}', [ReportesController::class,'pdfQueHaSalidoProyectos']);
 
-    // --- REPORTE / INVENTARIO PROYECTO
-    Route::get('/admin/reporte/inventario/quetengopor/proyecto', [ReportesController::class,'vistaQueTengoPorProyecto'])->name('admin.reporte.inventario.tengoporproyecto.index');
-    Route::get('/admin/reporte/quetengopor/proyectos/pdf/{idproy}', [ReportesController::class,'reporteQueTengoPorProyecto']);
-    Route::post('/admin/firmas/proyectos/completado/actualizar', [ReportesController::class, 'actualizarFirmasSobrantes']);
-    Route::post('/admin/firmas/proyectos/traspaso/actualizar', [ReportesController::class, 'actualizarFirmasTraspaso']);
 
 
-
-
-    // --- REPORTE / VER LOS MATERIALES QUE SOBRARON DE UN PROYECTO COMPLETADO
-    Route::get('/admin/reporte/inventario/sobranteterminado/proy/{idtrans}', [ReportesController::class,'reporteProyectoTerminado']);
-
-
-    // Destino de sobrantes — a proyecto o salida general - GEAD-002-FORM
-    Route::get('/admin/reporte/inventario/destino/sobrantes/{idtrans}/{tipo}',
-        [ReportesController::class, 'reporteDestinoSobrantes']);
-
-// Destino de sobrantes — reporte DESCRIPTIVO (transferencias + generales + reservas)
-    Route::get('/admin/reporte/inventario/destino/sobrantesdescriptivo/{idtrans}',
-        [ReportesController::class, 'reporteDestinoSobrantesDescriptivo']);
-
-
-
-    // --- REPORTE / ENTREGAS MENSUALES - GEAD-002-REPO
-    Route::get('/admin/reporte/proyectos/codigos', [ReportesController::class,'vistaReporteProyectoCodigos'])->name('admin.reporte.proyectos.codigos.index');
-    Route::get('/admin/reporte/proyectos/codigos/pdf/{idproy}/{desde}/{hasta}/{descripcion?}', [ReportesController::class, 'reportePDFProyectoCodigos']);
 
 
 
@@ -260,9 +192,11 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/firmas/proyectos/periodos/actualizar', [ReportesController::class, 'actualizarFirmasReportePeriodos']);
 
 
-
+    // --- ACTUALIZAR DISTANCIA FIRMAS ---
     Route::post('/admin/informacion/actualizar/px', [ReportesController::class, 'actualizarPxInformacionGeneral'])
         ->name('admin.informacion.actualizar.px');
+
+
 
 
 

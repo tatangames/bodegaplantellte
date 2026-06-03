@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Sistema;
 use App\Http\Controllers\Controller;
 use App\Models\Cuenta;
 use App\Models\Departamentos;
+use App\Models\Equipos;
 use App\Models\ObjetoEspecifico;
 use App\Models\Rubro;
 use App\Models\UnidadMedida;
+use Database\Seeders\EquiposSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -87,17 +89,17 @@ class ConfiguracionController extends Controller
     //********* DEPARTAMENTOS **************************************************************
 
 
-    public function indexDepartamentos(){
-        return view('backend.admin.configuracion.departamentos.vistadepartamentos');
+    public function indexEquipos(){
+        return view('backend.admin.configuracion.equipos.vistaequipos');
     }
 
-    public function tablaDepartamentos(){
+    public function tablaEquipos(){
 
-        $lista = Departamentos::orderBy('nombre', 'ASC')->get();
-        return view('backend.admin.configuracion.departamentos.tabladepartamentos', compact('lista'));
+        $lista = Equipos::orderBy('nombre', 'ASC')->get();
+        return view('backend.admin.configuracion.equipos.tablaequipos', compact('lista'));
     }
 
-    public function nuevaDepartamentos(Request $request){
+    public function nuevaEquipos(Request $request){
         $regla = array(
             'nombre' => 'required',
         );
@@ -106,7 +108,7 @@ class ConfiguracionController extends Controller
 
         if ($validar->fails()){ return ['success' => 0];}
 
-        $dato = new Departamentos();
+        $dato = new Equipos();
         $dato->nombre = $request->nombre;
 
         if($dato->save()){
@@ -116,7 +118,7 @@ class ConfiguracionController extends Controller
         }
     }
 
-    public function informacionDepartamentos(Request $request){
+    public function informacionEquipos(Request $request){
         $regla = array(
             'id' => 'required',
         );
@@ -125,7 +127,7 @@ class ConfiguracionController extends Controller
 
         if ($validar->fails()){ return ['success' => 0];}
 
-        if($lista = Departamentos::where('id', $request->id)->first()){
+        if($lista = Equipos::where('id', $request->id)->first()){
 
             return ['success' => 1, 'info' => $lista];
         }else{
@@ -133,7 +135,7 @@ class ConfiguracionController extends Controller
         }
     }
 
-    public function editarDepartamentos(Request $request){
+    public function editarEquipos(Request $request){
 
         $regla = array(
             'id' => 'required',
@@ -144,9 +146,9 @@ class ConfiguracionController extends Controller
 
         if ($validar->fails()){ return ['success' => 0];}
 
-        if(Departamentos::where('id', $request->id)->first()){
+        if(Equipos::where('id', $request->id)->first()){
 
-            Departamentos::where('id', $request->id)->update([
+            Equipos::where('id', $request->id)->update([
                 'nombre' => $request->nombre
             ]);
 
