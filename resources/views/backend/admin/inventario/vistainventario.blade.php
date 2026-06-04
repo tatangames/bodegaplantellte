@@ -125,7 +125,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Objeto Específico: <span style="color: red">*</span></label>
+                                            <label>Código Presupuestario: <span style="color: red">*</span></label>
                                             <select class="form-control" id="select-objeto-nuevo" style="width:100%">
                                                 <option value="">— Sin asignar —</option>
                                                 @foreach($lObjetoEspecifico as $obj)
@@ -192,7 +192,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label>Objeto Específico: <small class="text-muted">(opcional)</small></label>
+                                                    <label>Código Presupuestario: <small class="text-muted">(opcional)</small></label>
                                                     <select class="form-control" id="select-objeto-editar" style="width:100%">
                                                     </select>
                                                 </div>
@@ -389,7 +389,7 @@
 
             if (!nombre) { toastr.error('Nombre es requerido'); return; }
             if (!unidad) { toastr.error('Unidad Medida es requerida'); return; }
-            if (!id_objespecifico) { toastr.error('Objeto Específico es requerido'); return; }
+            if (!id_objespecifico) { toastr.error('Código Presupuestario es requerido'); return; }
 
             openLoading();
             var formData = new FormData();
@@ -469,7 +469,7 @@
 
             if (!nombre) { toastr.error('Nombre es requerido'); return; }
             if (!unidad) { toastr.error('Unidad Medida es requerida'); return; }
-            if (!id_objespecifico) { toastr.error('Objeto Específico es requerido'); return; }
+            if (!id_objespecifico) { toastr.error('Código Presupuestario es requerido'); return; }
 
             openLoading();
             var formData = new FormData();

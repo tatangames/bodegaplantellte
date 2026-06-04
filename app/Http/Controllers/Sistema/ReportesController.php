@@ -88,7 +88,7 @@ class ReportesController extends Controller
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px; border:0.8px solid #aaa;'>
     <thead>
         <tr style='background:#6c757d;'>
-            <td style='font-weight:bold; width:11%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Obj. Espec.</td>
+            <td style='font-weight:bold; width:11%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Cod. Presu.</td>
             <td style='font-weight:bold; width:32%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Material</td>
             <td style='font-weight:bold; width:12%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Medida</td>
             <td style='font-weight:bold; width:10%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Cantidad</td>
@@ -391,7 +391,7 @@ class ReportesController extends Controller
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px; border:0.8px solid #aaa;'>
     <thead>
         <tr style='background:#6c757d;'>
-            <td style='font-weight:bold; width:11%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Obj. Espec.</td>
+            <td style='font-weight:bold; width:11%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Cod. Presu.</td>
             <td style='font-weight:bold; width:32%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Material</td>
             <td style='font-weight:bold; width:12%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Medida</td>
             <td style='font-weight:bold; width:10%; font-size:11px; color:#fff; padding:5px 6px; border:0.8px solid #888;'>Cantidad</td>
