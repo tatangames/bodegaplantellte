@@ -29,4 +29,6 @@ class SalidasDetalle extends Model
         //         'id_material'    → FK en salidasdetalle
         //         'id'             → PK en la tabla materiales
     }
+
+
 }

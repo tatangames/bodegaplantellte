@@ -28,7 +28,6 @@
             </a>
         </div>
     </li>
-
     <li class="nav-item">
         <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
             @csrf
@@ -51,18 +50,13 @@
                         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filtros</h3>
                     </div>
                     <div class="card-body">
-
-                        {{-- Fila 1: Proyecto + Fechas + Botones --}}
                         <div class="row align-items-end">
-                            <div class="col-md-4">
-                                <label class="font-weight-bold">Proyecto</label>
-                                <select class="form-control" id="filtro-proyecto">
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Equipo</label>
+                                <select class="form-control" id="filtro-equipo">
                                     <option value="">— Todos —</option>
-                                    @foreach($arrayProyectos as $p)
-                                        <option value="{{ $p->id }}"
-                                                data-cerrado="{{ $p->transferido ? '1' : '0' }}">
-                                            {{ $p->nombre }}
-                                        </option>
+                                    @foreach($arrayEquipos as $eq)
+                                        <option value="{{ $eq->id }}">{{ $eq->nombre }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -74,34 +68,24 @@
                                 <label class="font-weight-bold">Fecha hasta</label>
                                 <input type="date" class="form-control" id="filtro-fecha-hasta">
                             </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-block mb-1" onclick="recargar()">
-                                    <i class="fas fa-search mr-1"></i> Filtrar
-                                </button>
-                                <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
-                                    <i class="fas fa-times mr-1"></i> Limpiar
-                                </button>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <div style="width:100%">
+                                    <button class="btn btn-primary btn-block mb-1" onclick="recargar()">
+                                        <i class="fas fa-search mr-1"></i> Filtrar
+                                    </button>
+                                    <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
+                                        <i class="fas fa-times mr-1"></i> Limpiar
+                                    </button>
+                                </div>
                             </div>
                         </div>
-
-                        {{-- Fila 2: Búsqueda por material --}}
                         <div class="row align-items-end mt-3">
                             <div class="col-md-6">
-                                <label class="font-weight-bold">
-                                    <i class="fas fa-box mr-1 text-muted"></i> Buscar por material (nombre)
-                                </label>
-                                <input type="text"
-                                       class="form-control"
-                                       id="filtro-material"
-                                       placeholder="Ej: cemento, MAT-001 ...">
-                            </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <small class="text-muted">
-                                    Filtra las salidas que contengan ese material en su detalle.
-                                </small>
+                                <label class="font-weight-bold">Buscar por material</label>
+                                <input type="text" class="form-control" id="filtro-material"
+                                       placeholder="Nombre del material...">
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -126,9 +110,9 @@
         </section>
     </div>
 
-    {{-- Modal Editar Salida --}}
-    <div class="modal fade" id="modalEditar" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-md" role="document">
+    {{-- ══ Modal Editar Salida ══ --}}
+    <div class="modal fade" id="modalEditar" tabindex="-1">
+        <div class="modal-dialog modal-md">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
                     <h5 class="modal-title text-white">
@@ -146,36 +130,47 @@
                             <input type="date" id="fecha-editar" class="form-control">
                         </div>
                         <div class="form-group">
-                            <label>Descripción</label>
+                            <label>Equipo <span class="text-danger">*</span></label>
+                            <select id="select-equipo-editar" class="form-control" style="width:100%">
+                                <option value="">Seleccione...</option>
+                                @foreach($arrayEquipos as $eq)
+                                    <option value="{{ $eq->id }}">{{ $eq->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>N. Talonario <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" id="talonario-editar" class="form-control" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre quien recibe <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" id="fichaNombre-editar" class="form-control" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción <small class="text-muted">(Opcional)</small></label>
                             <textarea id="descripcion-editar" class="form-control"
-                                      rows="3" maxlength="800"
-                                      placeholder="Descripción opcional"></textarea>
+                                      rows="3" maxlength="800"></textarea>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-warning" onclick="editar()">
-                        <i class="fas fa-save mr-1"></i>Guardar cambios
+                        <i class="fas fa-save mr-1"></i> Guardar cambios
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Modal Detalle Salida --}}
-    <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
+    {{-- ══ Modal Detalle Salida ══ --}}
+    <div class="modal fade" id="modalDetalle" tabindex="-1">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white">
                         <i class="fas fa-list mr-2"></i>
-                        Detalle de Salida —
-                        <span id="detalle-proyecto"></span>
-                        <small class="ml-2" id="detalle-fecha"></small>
-                        <span id="detalle-badge-cerrado" class="badge badge-danger ml-2" style="display:none;">
-                            Proyecto Cerrado
-                        </span>
+                        Detalle — <span id="detalle-titulo"></span>
                     </h5>
                     <button type="button" class="close text-white" data-dismiss="modal">
                         <span>&times;</span>
@@ -190,10 +185,10 @@
                             <thead class="thead-dark">
                             <tr>
                                 <th>#</th>
-                                <th>Código</th>
                                 <th>Material</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                             </thead>
                             <tbody id="detalle-tbody"></tbody>
@@ -219,38 +214,12 @@
     <script src="{{ asset('js/select2.min.js') }}" type="text/javascript"></script>
 
     <script>
+        var _salidaIdActual     = null;
+        var _salidaTituloActual = '';
+
         $(function () {
             const ruta = "{{ url('/admin/historial/salidas/tabla') }}";
 
-            // ── Select2 con badge de estado ───────────────────────
-            $('#filtro-proyecto').select2({
-                theme: 'bootstrap-5',
-                placeholder: '— Todos —',
-                allowClear: true,
-                language: { noResults: function () { return 'No encontrado'; } },
-                templateResult: function (data) {
-                    if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
-                    return $('<span class="d-flex align-items-center justify-content-between">')
-                        .append($('<span>').text(data.text))
-                        .append($('<span>')
-                            .addClass(cerrado ? 'badge badge-danger ml-2' : 'badge badge-success ml-2')
-                            .text(cerrado ? 'Cerrado' : 'Activo')
-                        );
-                },
-                templateSelection: function (data) {
-                    if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
-                    return $('<span>')
-                        .append($('<span>').text(data.text))
-                        .append($('<span>')
-                            .addClass(cerrado ? 'badge badge-danger ml-2' : 'badge badge-success ml-2')
-                            .text(cerrado ? 'Cerrado' : 'Activo')
-                        );
-                }
-            });
-
-            // ── DataTable ─────────────────────────────────────────
             function initDataTable() {
                 if ($.fn.DataTable.isDataTable('#tabla')) {
                     $('#tabla').DataTable().destroy();
@@ -288,41 +257,52 @@
                 $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
             }
 
-            // ── Cargar tabla con filtros ──────────────────────────
             function cargarTabla() {
-                const proyecto   = $('#filtro-proyecto').val();
+                const equipo     = $('#filtro-equipo').val();
                 const fechaDesde = $('#filtro-fecha-desde').val();
                 const fechaHasta = $('#filtro-fecha-hasta').val();
                 const material   = $('#filtro-material').val().trim();
 
                 const params = new URLSearchParams();
-                if (proyecto)   params.append('proyecto',    proyecto);
+                if (equipo)     params.append('equipo',      equipo);
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
                 if (material)   params.append('material',    material);
 
                 const url = params.toString() ? ruta + '?' + params.toString() : ruta;
-
-                $('#tablaDatatable').load(url, function () {
-                    initDataTable();
-                });
+                $('#tablaDatatable').load(url, function () { initDataTable(); });
             }
 
             window.recargar = function () { cargarTabla(); };
 
             window.limpiarFiltros = function () {
-                $('#filtro-proyecto').val('').trigger('change');
+                $('#filtro-equipo').val('').trigger('change');
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
                 $('#filtro-material').val('');
                 cargarTabla();
             };
 
+            $('#filtro-equipo').select2({
+                theme: 'bootstrap-5',
+                placeholder: '— Todos —',
+                allowClear: true,
+                language: { noResults: function () { return 'No encontrado'; } }
+            });
+
+            $('#select-equipo-editar').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#modalEditar'),
+                language: { noResults: function () { return 'No encontrado'; } }
+            });
+
+            // Delegación botones detalle
+            $(document).on('click', '.btn-eliminar-detalle-salida', function () {
+                eliminarDetalleItem($(this).data('id'), $(this).data('material'), $(this).data('salida-id'));
+            });
+
             cargarTabla();
         });
-    </script>
-
-    <script>
 
         // ── Editar cabecera ───────────────────────────────────────
         function modalEditar(id) {
@@ -335,9 +315,11 @@
                     if (response.data.success === 1) {
                         const s = response.data.salida;
                         $('#id-editar').val(s.id);
-                        const soloFecha = s.fecha ? s.fecha.substring(0, 10) : '';
-                        $('#fecha-editar').val(soloFecha);
+                        $('#fecha-editar').val(s.fecha ? s.fecha.substring(0, 10) : '');
                         $('#descripcion-editar').val(s.descripcion ?? '');
+                        $('#talonario-editar').val(s.ficha_talonario ?? '');
+                        $('#fichaNombre-editar').val(s.ficha_nombre ?? '');
+                        $('#select-equipo-editar').val(s.id_equipo).trigger('change');
                         $('#modalEditar').modal('show');
                     } else {
                         toastr.error('No se pudo cargar la información');
@@ -349,16 +331,22 @@
         function editar() {
             const id          = $('#id-editar').val();
             const fecha       = $('#fecha-editar').val().trim();
+            const equipo      = $('#select-equipo-editar').val();
             const descripcion = $('#descripcion-editar').val().trim();
+            const talonario   = $('#talonario-editar').val().trim();
+            const fichaNombre = $('#fichaNombre-editar').val().trim();
 
-            if (fecha === '')             { toastr.error('La fecha es requerida'); return; }
-            if (descripcion.length > 800) { toastr.error('Descripción máximo 800 caracteres'); return; }
+            if (!fecha)  { toastr.error('La fecha es requerida');  return; }
+            if (!equipo) { toastr.error('El equipo es requerido'); return; }
 
             openLoading();
             const formData = new FormData();
-            formData.append('id',          id);
-            formData.append('fecha',       fecha);
-            formData.append('descripcion', descripcion);
+            formData.append('id',              id);
+            formData.append('fecha',           fecha);
+            formData.append('id_equipo',       equipo);
+            formData.append('descripcion',     descripcion);
+            formData.append('ficha_talonario', talonario);
+            formData.append('ficha_nombre',    fichaNombre);
 
             axios.post(urlAdmin + '/admin/historial/salidas/editar', formData)
                 .then((response) => {
@@ -367,18 +355,6 @@
                         toastr.success('Salida actualizada correctamente');
                         $('#modalEditar').modal('hide');
                         recargar();
-                    } else if (response.data.success === 2) {
-                        Swal.fire({
-                            title: 'Fecha inválida',
-                            html:
-                                'El material <b>' + response.data.nombre_material + '</b> ' +
-                                'tiene fecha de ingreso <b>' + response.data.fecha_ingreso + '</b>.<br><br>' +
-                                'La fecha de salida (<b>' + response.data.fecha_salida + '</b>) ' +
-                                'no puede ser anterior al ingreso.',
-                            icon: 'warning',
-                            confirmButtonColor: '#d33',
-                            confirmButtonText: 'Entendido'
-                        });
                     } else {
                         toastr.error('Error al actualizar');
                     }
@@ -386,11 +362,11 @@
                 .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
         }
 
-        // ── Eliminar ──────────────────────────────────────────────
+        // ── Eliminar salida completa ──────────────────────────────
         function eliminar(id) {
             Swal.fire({
                 title: '¿Eliminar salida?',
-                text: 'Se eliminarán también todos los detalles relacionados. Esta acción no se puede deshacer.',
+                text: 'Se eliminarán también todos los materiales asociados. Esta acción no se puede deshacer.',
                 type: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -415,21 +391,16 @@
             });
         }
 
-        // ── Detalle salida ────────────────────────────────────────
-        function verDetalle(id, proyecto, fecha, cerrado) {
-            $('#detalle-proyecto').text(proyecto);
-            $('#detalle-fecha').text(fecha);
+        // ── Ver detalle ───────────────────────────────────────────
+        function verDetalle(id, titulo) {
+            _salidaIdActual     = id;
+            _salidaTituloActual = titulo;
+
+            $('#detalle-titulo').text(titulo);
             $('#detalle-tbody').html('');
             $('#detalle-contenido').hide();
             $('#detalle-vacio').hide();
             $('#detalle-loading').show();
-
-            if (cerrado) {
-                $('#detalle-badge-cerrado').show();
-            } else {
-                $('#detalle-badge-cerrado').hide();
-            }
-
             $('#modalDetalle').modal('show');
 
             axios.post(urlAdmin + '/admin/historial/salidas/detalle', { id: id })
@@ -441,10 +412,18 @@
                             html += `
                                 <tr>
                                     <td>${index + 1}</td>
-                                    <td>${fila.codigo}</td>
                                     <td>${fila.material}</td>
                                     <td class="text-center">${fila.cantidad_salida}</td>
                                     <td class="text-right">$${fila.precio}</td>
+                                    <td class="text-center">
+                                        <button type="button"
+                                                class="btn btn-danger btn-xs btn-eliminar-detalle-salida"
+                                                data-id="${fila.id}"
+                                                data-material="${fila.material}"
+                                                data-salida-id="${id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
                                 </tr>`;
                         });
                         $('#detalle-tbody').html(html);
@@ -460,5 +439,51 @@
                 });
         }
 
+        function recargarDetalle() {
+            if (_salidaIdActual) {
+                verDetalle(_salidaIdActual, _salidaTituloActual);
+            }
+        }
+
+        // ── Eliminar item de detalle ──────────────────────────────
+        function eliminarDetalleItem(id, material, salidaId) {
+            Swal.fire({
+                title: '¿Eliminar material?',
+                html: `Se eliminará: <b>${material}</b><br><small class="text-muted">Si es el último material, la salida también será eliminada.</small>`,
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.value) {
+                    openLoading();
+                    axios.post(urlAdmin + '/admin/historial/salidas/detalle/eliminar', { id: id })
+                        .then((response) => {
+                            closeLoading();
+                            switch (response.data.success) {
+                                case 1:
+                                    if (response.data.salida_borrada) {
+                                        toastr.success('Material eliminado. La salida fue eliminada por quedar vacía.');
+                                        $('#modalDetalle').modal('hide');
+                                        recargar();
+                                    } else {
+                                        toastr.success('Material eliminado correctamente');
+                                        recargarDetalle();
+                                        recargar();
+                                    }
+                                    break;
+                                case 0:
+                                    toastr.error('El material no existe o ya fue eliminado');
+                                    break;
+                                default:
+                                    toastr.error('Error al eliminar');
+                            }
+                        })
+                        .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });
+                }
+            });
+        }
     </script>
 @endsection

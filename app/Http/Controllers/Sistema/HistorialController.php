@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sistema;
 use App\Http\Controllers\Controller;
 use App\Models\Entradas;
 use App\Models\EntradasDetalle;
+use App\Models\Equipos;
 use App\Models\InformacionGeneral;
 use App\Models\Materiales;
 use App\Models\Reserva;
@@ -287,30 +288,30 @@ class HistorialController extends Controller
 
     public function indexHistorialSalidas()
     {
-        $arrayProyectos = TipoProyecto::orderBy('nombre')->get();
+        $arrayEquipos = Equipos::orderBy('nombre')->get();
 
         return view('backend.admin.historial.salidas.vistahistorialsalidas',
-            compact('arrayProyectos'));
+            compact('arrayEquipos'));
     }
 
     public function tablaHistorialSalidas(Request $request)
     {
-        $arraySalidas = Salidas::with('tipoproyecto')
-            ->when($request->proyecto, fn($q) => $q->where('id_tipoproyecto', $request->proyecto)
+        $arraySalidas = Salidas::with('equipo')
+            ->when($request->equipo, fn($q) =>
+            $q->where('id_equipo', $request->equipo)
             )
-            ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde)
+            ->when($request->fecha_desde, fn($q) =>
+            $q->whereDate('fecha', '>=', $request->fecha_desde)
             )
-            ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta)
+            ->when($request->fecha_hasta, fn($q) =>
+            $q->whereDate('fecha', '<=', $request->fecha_hasta)
             )
-            // ── Filtro por material ──────────────────────────────
             ->when($request->material, function ($q) use ($request) {
                 $busqueda = '%' . $request->material . '%';
-                $q->whereHas('detalles.entradaDetalle.material', function ($q2) use ($busqueda) {
-                    $q2->where('nombre', 'LIKE', $busqueda)
-                        ->orWhere('codigo', 'LIKE', $busqueda);
+                $q->whereHas('detalle.entradaDetalle.material', function ($q2) use ($busqueda) {
+                    $q2->where('nombre', 'LIKE', $busqueda);
                 });
             })
-            // ────────────────────────────────────────────────────
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
@@ -333,10 +334,13 @@ class HistorialController extends Controller
 
         return response()->json([
             'success' => 1,
-            'salida' => [
-                'id' => $salida->id,
-                'fecha' => $salida->fecha,
-                'descripcion' => $salida->descripcion,
+            'salida'  => [
+                'id'              => $salida->id,
+                'fecha'           => $salida->fecha,
+                'descripcion'     => $salida->descripcion,
+                'id_equipo'       => $salida->id_equipo,
+                'ficha_nombre'    => $salida->ficha_nombre,
+                'ficha_talonario' => $salida->ficha_talonario,
             ]
         ]);
     }
@@ -349,29 +353,11 @@ class HistorialController extends Controller
             return response()->json(['success' => 0]);
         }
 
-        // ── Validar que la nueva fecha no sea anterior al ingreso de ningún ítem ──
-        $entradaConflicto = DB::table('salidas_detalle as sd')
-            ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')
-            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
-            ->join('materiales as m', 'm.id', '=', 'ed.id_material')
-            ->where('sd.id_salida', $salida->id)
-            ->where('e.fecha', '>', $request->fecha)   // ingreso posterior a la nueva fecha
-            ->orderBy('e.fecha', 'desc')
-            ->select('m.nombre as nombre_material', 'e.fecha as fecha_ingreso')
-            ->first();
-
-        if ($entradaConflicto) {
-            return response()->json([
-                'success' => 2,
-                'nombre_material' => $entradaConflicto->nombre_material,
-                'fecha_salida' => Carbon::parse($request->fecha)->format('d-m-Y'),
-                'fecha_ingreso' => Carbon::parse($entradaConflicto->fecha_ingreso)->format('d-m-Y'),
-            ]);
-        }
-        // ─────────────────────────────────────────────────────────────────────────
-
-        $salida->fecha = $request->fecha;
-        $salida->descripcion = $request->descripcion ?: null;
+        $salida->fecha           = $request->fecha;
+        $salida->descripcion     = $request->descripcion     ?: null;
+        $salida->id_equipo       = $request->id_equipo;
+        $salida->ficha_nombre    = $request->ficha_nombre    ?: null;
+        $salida->ficha_talonario = $request->ficha_talonario ?: null;
         $salida->save();
 
         return response()->json(['success' => 1]);
@@ -385,11 +371,17 @@ class HistorialController extends Controller
             return response()->json(['success' => 0]);
         }
 
-        // salidas_detalle apunta a salidas, hay que borrarla primero
-        $salida->detalle()->delete();
-        $salida->delete();
-
-        return response()->json(['success' => 1]);
+        DB::beginTransaction();
+        try {
+            $salida->detalle()->delete();
+            $salida->delete();
+            DB::commit();
+            return response()->json(['success' => 1]);
+        } catch (\Throwable $e) {
+            DB::rollback();
+            Log::error('eliminarSalida: ' . $e->getMessage());
+            return response()->json(['success' => 99]);
+        }
     }
 
     public function detalleSalida(Request $request)
@@ -405,10 +397,10 @@ class HistorialController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'codigo' => $item->entradaDetalle->id_material ?? '',
-                    'material' => $item->entradaDetalle->material->nombre ?? '',
+                    'id'              => $item->id,
+                    'material'        => $item->entradaDetalle->material->nombre ?? '',
                     'cantidad_salida' => $item->cantidad_salida,
-                    'precio' => number_format($item->entradaDetalle->precio, 4),
+                    'precio'          => number_format($item->entradaDetalle->precio ?? 0, 4),
                 ];
             });
 
@@ -421,13 +413,11 @@ class HistorialController extends Controller
 
     public function vistaExtrasSalida($id)
     {
-        $salida = Salidas::with('tipoproyecto')->find($id);
+        $salida = Salidas::with('equipo')->find($id);
 
-        if (!$salida || $salida->tipoproyecto->transferido == 1) {
-            return redirect()->route('admin.historial.salidas.index')
-                ->with('error', 'El proyecto está cerrado, no se pueden agregar extras');
+        if (!$salida) {
+            return redirect()->route('admin.historial.salidas.index');
         }
-
 
         return view('backend.admin.historial.salidas.vistaextrassalidas', compact('salida'));
     }
@@ -440,45 +430,96 @@ class HistorialController extends Controller
             return response()->json(['success' => 0]);
         }
 
-        if ($salida->tipoproyecto->transferido == 1) {
-            return response()->json(['success' => 0, 'mensaje' => 'El proyecto está cerrado']);
-        }
-
         $contenedor = json_decode($request->contenedorArray, true);
 
         if (empty($contenedor)) {
             return response()->json(['success' => 0]);
         }
 
-        // Misma validación que el guardado original
+        // ── Agrupar por id_entrada_detalle para sumar si viene el mismo lote dos veces ──
+        $agrupado = [];
         foreach ($contenedor as $index => $item) {
-            $entradasDetalle = EntradasDetalle::find($item['infoIdEntradaDeta']);
+            $id = $item['infoIdEntradaDeta'];
+            if (!isset($agrupado[$id])) {
+                $agrupado[$id] = ['cantidad' => 0, 'fila' => $index + 1];
+            }
+            $agrupado[$id]['cantidad'] += (int) $item['infoCantidad'];
+        }
 
-            if (!$entradasDetalle) {
-                return response()->json(['success' => 2, 'fila' => $index + 1]);
+        // ── Validar disponibilidad ──
+        foreach ($agrupado as $idEntradaDeta => $datos) {
+            $entDetalle = EntradasDetalle::with('material')->find($idEntradaDeta);
+
+            if (!$entDetalle) {
+                return response()->json([
+                    'success' => 2,
+                    'fila'    => $datos['fila'],
+                    'msg'     => 'Material no encontrado en el lote.',
+                ]);
             }
 
-            // Calcular cantidad disponible actual
-            $totalSalido = SalidasDetalle::where('id_entrada_detalle', $entradasDetalle->id)
+            $totalSalido = SalidasDetalle::where('id_entrada_detalle', $entDetalle->id)
                 ->sum('cantidad_salida');
 
-            $disponible = $entradasDetalle->cantidad_inicial - $totalSalido;
+            $disponible = $entDetalle->cantidad_inicial - $totalSalido;
 
-            if ($item['infoCantidad'] > $disponible) {
-                return response()->json(['success' => 2, 'fila' => $index + 1]);
+            if ($datos['cantidad'] > $disponible) {
+                return response()->json([
+                    'success'         => 2,
+                    'fila'            => $datos['fila'],
+                    'msg'             => 'Cantidad insuficiente.',
+                    'nombre_material' => $entDetalle->material->nombre ?? 'Material desconocido',
+                    'cantidad_pedida' => $datos['cantidad'],
+                    'disponible'      => (int) $disponible,
+                ]);
             }
         }
 
+        // ── Guardar ──
         foreach ($contenedor as $item) {
             SalidasDetalle::create([
-                'id_salida' => $salida->id,
+                'id_salida'          => $salida->id,
                 'id_entrada_detalle' => $item['infoIdEntradaDeta'],
-                'cantidad_salida' => $item['infoCantidad'],
+                'cantidad_salida'    => (int) $item['infoCantidad'],
             ]);
         }
 
         return response()->json(['success' => 10]);
     }
+
+
+    public function eliminarDetalleSalida(Request $request)
+    {
+        $detalle = SalidasDetalle::find($request->id);
+
+        if (!$detalle) {
+            return response()->json(['success' => 0]);
+        }
+
+        DB::beginTransaction();
+        try {
+            $salidaId = $detalle->id_salida;
+            $detalle->delete();
+
+            $quedan = SalidasDetalle::where('id_salida', $salidaId)->count();
+
+            if ($quedan === 0) {
+                Salidas::where('id', $salidaId)->delete();
+                DB::commit();
+                return response()->json(['success' => 1, 'salida_borrada' => true]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => 1, 'salida_borrada' => false]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('eliminarDetalleSalida: ' . $e->getMessage());
+            return response()->json(['success' => 99]);
+        }
+    }
+
+
 
 
 }

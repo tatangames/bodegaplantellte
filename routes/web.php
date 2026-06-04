@@ -131,8 +131,6 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/entradas/detalle',        [HistorialController::class, 'detalleEntrada']);
     Route::post('/admin/historial/entradas/detalle/editar', [HistorialController::class, 'editarDetalleEntrada']);
     Route::post('/admin/historial/entradas/detalle/eliminar', [HistorialController::class, 'eliminarDetalleEntrada']);
-
-
     Route::get('/admin/historial/entradas/extras/{id}', [HistorialController::class, 'vistaExtrasEntrada'])->name('admin.historial.entradas.extras');
     Route::post('/admin/historial/entradas/extras/guardar', [HistorialController::class, 'guardarExtrasEntrada']);
 
@@ -145,52 +143,13 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/salidas/detalle', [HistorialController::class, 'detalleSalida']);
     Route::get('/admin/historial/salidas/extras/{id}',      [HistorialController::class, 'vistaExtrasSalida'])->name('admin.historial.salidas.extras');
     Route::post('/admin/historial/salidas/extras/guardar',  [HistorialController::class, 'guardarExtrasSalida']);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    Route::post('/admin/historial/salidas/detalle/eliminar', [HistorialController::class, 'eliminarDetalleSalida']);
 
     // --- REPORTE / ENTRADA POR PROYECTO
-    Route::get('/admin/reporte/inventario/quehaentrado/proyecto', [ReportesController::class,'vistaQueHaEntradoProyecto'])->name('admin.reporte.inventario.entradaproyecto.index');
-    Route::get('/admin/reporte/quehaentrado/proyectos/pdf/{idproy}/{desde}/{hasta}/{tipo}', [ReportesController::class,'pdfQueHaEntradoProyectos']);
-
-    // --- REPORTE / SALIDA POR PROYECTO
-    Route::get('/admin/reporte/quehasalido/proyectos/pdf/{idproy}/{desde}/{hasta}/{tipo}', [ReportesController::class,'pdfQueHaSalidoProyectos']);
-
-
-
-
-
-
-
-
-
-
-
-    // --- REPORTE / PROYECTO CERRADO - INVENTARIO QUE SOBRO
-    Route::get('/admin/reporte/proyectos/codigos', [ReportesController::class,'vistaReporteSobranteProyectoCerrado'])->name('reporte.proyecto.cerrado.index');
-    Route::post('/admin/reporte/proyectos/cerrado/pdf', [ReportesController::class, 'vistaPDFReporteSobranteProyectoCerrado']);
-    Route::post('/admin/firmas/proyectos/cerrado/actualizar', [ReportesController::class, 'actualizarFirmasReporteCerrado']);
-
-
-    // --- REPORTE /POR PERIODOS
-    Route::get('/admin/reporte/proyectos/periodos', [ReportesController::class,'vistaReportePorPeriodos'])->name('reporte.proyecto.porperiodos.index');
-    Route::post('/admin/reporte/proyectos/periodos/pdf', [ReportesController::class, 'vistaPDFReportePorPeriodos']);
-    Route::post('/admin/firmas/proyectos/periodos/actualizar', [ReportesController::class, 'actualizarFirmasReportePeriodos']);
-
+    Route::get('/admin/reporte/inventario/quehaentrado', [ReportesController::class,'vistaQueHaEntrado'])->name('admin.reporte.inventario.entrada.index');
+    Route::get('/admin/reporte/quehaentrado/pdf/{desde}/{hasta}/{tipo}', [ReportesController::class, 'pdfQueHaEntradoProyectos']);
+    Route::get('/admin/reporte/quehasalido/pdf/{desde}/{hasta}/{tipo}', [ReportesController::class, 'pdfQueHaSalidoProyectos']);
+    Route::get('admin/reporte/inventario/pdf/{idMaterial}', [ReportesController::class, 'pdfInventarioActual'])->name('admin.reporte.inventario.pdf');
 
     // --- ACTUALIZAR DISTANCIA FIRMAS ---
     Route::post('/admin/informacion/actualizar/px', [ReportesController::class, 'actualizarPxInformacionGeneral'])

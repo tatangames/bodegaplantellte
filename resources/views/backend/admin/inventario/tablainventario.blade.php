@@ -10,7 +10,7 @@
                                 <th style="width: 8%">Marca</th>
                                 <th style="width: 20%">Nombre</th>
                                 <th style="width: 10%">Medida</th>
-                                <th style="width: 10%">Cantidad</th>
+                                <th style="width: 10%">Cantidad Actual</th>
                                 <th style="width: 15%">Objeto Específico</th>
                                 <th style="width: 15%">Opciones</th>
                             </tr>
@@ -32,10 +32,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <button type="button" style="margin: 2px" class="btn btn-info btn-xs"
-                                                onclick="verInventario({{ $dato->id }}, '{{ addslashes($dato->nombre) }}')">
-                                            <i class="fas fa-map-marker-alt"></i> Inventario
-                                        </button>
+
                                         <button type="button" style="margin: 2px" class="btn btn-primary btn-xs"
                                                 onclick="informacion({{ $dato->id }})">
                                             <i class="fas fa-edit"></i> Editar

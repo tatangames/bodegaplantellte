@@ -257,7 +257,7 @@ return [
     */
 
     'use_route_url' => false,
-    'dashboard_url' => '#',
+    'dashboard_url' => '/',
     'logout_url' => 'logout',
     'login_url' => 'login',
     'register_url' => 'register',
@@ -418,12 +418,8 @@ return [
                 [
                     'text' => 'Entradas / Salidas',
                     'icon' => 'far fa-circle',
-                    'route' => 'admin.reporte.inventario.entradaproyecto.index',
+                    'route' => 'admin.reporte.inventario.entrada.index',
                 ],
-
-
-
-
             ],
         ],
 

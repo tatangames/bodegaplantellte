@@ -22,7 +22,9 @@ class Salidas extends Model
         return $this->hasMany(SalidasDetalle::class, 'id_salida', 'id');
     }
 
-
-
+    public function equipo()
+    {
+        return $this->belongsTo(Equipos::class, 'id_equipo');
+    }
 
 }

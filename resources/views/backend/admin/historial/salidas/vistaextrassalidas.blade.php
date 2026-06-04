@@ -1,6 +1,6 @@
 @extends('adminlte::page')
 
-@section('title', 'Agregar Extras — Salida #{{ $salida->id }}')
+@section('title', 'Agregar Extras')
 
 @section('content_header')
     <h1>Agregar Extras a Salida</h1>
@@ -11,8 +11,6 @@
 
 @section('content_top_nav_right')
     <link href="{{ asset('css/toastr.min.css') }}" type="text/css" rel="stylesheet"/>
-    <link href="{{ asset('css/select2.min.css') }}" type="text/css" rel="stylesheet">
-    <link href="{{ asset('css/select2-bootstrap-5-theme.min.css') }}" type="text/css" rel="stylesheet">
 
     <li class="nav-item dropdown">
         <a href="#" class="nav-link" data-toggle="dropdown">
@@ -39,8 +37,10 @@
 @section('content')
     <style>
         table { table-layout: fixed; }
+        #matriz-busqueda { table-layout: fixed; }
+        #matrizM { table-layout: auto; }
+        .cursor-pointer:hover { cursor: pointer; color: #401fd2; font-weight: bold; }
         *:focus { outline: none; }
-        #modalCantidad .modal-dialog { max-width: 95%; }
     </style>
 
     <div id="divcontenedor">
@@ -53,8 +53,7 @@
                         <div class="card card-gray-dark">
                             <div class="card-header">
                                 <h3 class="card-title">
-                                    Salida #{{ $salida->id }} —
-                                    {{ $salida->tipoproyecto->nombre ?? '' }}
+                                    Salida #{{ $salida->id }} — {{ $salida->equipo->nombre ?? '' }}
                                 </h3>
                             </div>
                             <div class="card-body">
@@ -63,7 +62,11 @@
                                         <label class="text-muted">Fecha</label>
                                         <p><strong>{{ date('d/m/Y', strtotime($salida->fecha)) }}</strong></p>
                                     </div>
-                                    <div class="col-md-9">
+                                    <div class="col-md-3">
+                                        <label class="text-muted">Talonario</label>
+                                        <p><strong>{{ $salida->ficha_talonario ?? '—' }}</strong></p>
+                                    </div>
+                                    <div class="col-md-6">
                                         <label class="text-muted">Descripción</label>
                                         <p><strong>{{ $salida->descripcion ?? '' }}</strong></p>
                                     </div>
@@ -93,10 +96,10 @@
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header" style="background:#2156af">
-                        <h4 class="modal-title" style="color:#fff">
+                        <h4 class="modal-title text-white">
                             <i class="fas fa-search mr-2"></i>Buscar Material
                         </h4>
-                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                        <button type="button" class="close text-white" data-dismiss="modal">
                             <span>&times;</span>
                         </button>
                     </div>
@@ -114,7 +117,8 @@
                                                        onkeyup="buscarMaterial(this)"
                                                        maxlength="300" type="text"
                                                        placeholder="Escribir nombre del material…">
-                                                <div class="droplista" style="position:absolute;z-index:9;width:95% !important;"></div>
+                                                <div class="droplista"
+                                                     style="position:absolute;z-index:9;width:95% !important;"></div>
                                             </td>
                                         </tr>
                                         </tbody>
@@ -140,10 +144,10 @@
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header" style="background:#1a3a6b">
-                        <h4 class="modal-title" style="color:#fff">
+                        <h4 class="modal-title text-white">
                             <i class="fas fa-boxes mr-2"></i>Salida de Material
                         </h4>
-                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                        <button type="button" class="close text-white" data-dismiss="modal">
                             <span>&times;</span>
                         </button>
                     </div>
@@ -163,7 +167,7 @@
                                 </div>
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-sm" id="matrizM">
-                                        <thead>
+                                        <thead class="thead-dark">
                                         <tr>
                                             <th>Fecha Ingreso</th>
                                             <th>Valor</th>
@@ -190,7 +194,7 @@
         {{-- Tabla detalle --}}
         <section class="content-header">
             <div class="row mb-2">
-                <div class="col-sm-6" style="margin-left: 15px">
+                <div class="col-sm-6" style="margin-left:15px">
                     <h2>Materiales a Sacar</h2>
                 </div>
             </div>
@@ -202,22 +206,29 @@
                     <div class="card-header">
                         <h3 class="card-title">Detalle</h3>
                     </div>
-                    <table class="table" id="matriz" style="margin: 0 15px;">
-                        <thead>
-                        <tr>
-                            <th style="width:5%">#</th>
-                            <th style="width:50%">Material</th>
-                            <th style="width:15%">Salida</th>
-                            <th style="width:10%">Opciones</th>
-                        </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover mb-0" id="matriz"
+                                   style="table-layout:auto; width:100%; word-break:break-word;">
+                                <thead class="thead-dark">
+                                <tr>
+                                    <th style="width:5%">#</th>
+                                    <th>Material</th>
+                                    <th style="width:12%">Salida</th>
+                                    <th style="width:10%">Opciones</th>
+                                </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <div class="modal-footer justify-content-between" style="margin-top: 25px;">
+        {{-- Botones finales --}}
+        <div class="modal-footer justify-content-between" style="margin-top:25px;">
+            <div></div>
             <button type="button" class="btn btn-success" onclick="preguntaGuardar()">
                 <i class="fas fa-save mr-1"></i> Guardar Extras
             </button>
@@ -233,128 +244,128 @@
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
 
     <script>
-        const ID_SALIDA   = {{ $salida->id }};
-        const ID_PROYECTO = {{ $salida->id_tipoproyecto ?? 'null' }};  {{-- 👈 nuevo --}}
-            window.seguroBuscador = true;
+        const ID_SALIDA = {{ $salida->id }};
+        window.seguroBuscador = true;
 
         $(document).ready(function () {
-            $(document).click(function () { $(".droplista").hide(); });
+            $(document).click(function () { $('.droplista').hide(); });
         });
 
+        // ── Modal buscador ────────────────────────────────────────
         function abrirModal() {
             document.getElementById('tablaRepuesto').innerHTML = '';
             document.getElementById('formulario-repuesto').reset();
             $('#modalRepuesto').modal('show');
         }
 
-        function validateInput(event) {
-            const key = event.key;
-            if (["Backspace","ArrowLeft","ArrowRight","Delete","Tab"].includes(key)) return true;
-            if (key === "e" || key === "E" || key === "-" || isNaN(Number(key))) return false;
-            return true;
-        }
-
-        function validateCantidadSalida(input, maxCantidad) {
-            input.value = input.value.replace(/[^0-9]/g, '');
-            if (Number(input.value) > maxCantidad) input.value = maxCantidad;
-        }
-
+        // ── Buscar material ───────────────────────────────────────
         function buscarMaterial(e) {
             if (seguroBuscador) {
                 seguroBuscador = false;
                 var row   = $(e).closest('tr');
                 var texto = e.value;
-                axios.post(urlAdmin + '/admin/buscar/material/disponible', {
-                    query:       texto,
-                    id_proyecto: ID_PROYECTO   // 👈 nuevo
-                })
+
+                axios.post(urlAdmin + '/admin/buscar/material/disponible', { query: texto })
                     .then((response) => {
                         seguroBuscador = true;
-                        $(row).find(".droplista").fadeIn().html(response.data);
+                        $(row).find('.droplista').fadeIn().html(response.data);
                     })
                     .catch(() => { seguroBuscador = true; });
             }
         }
 
+        // ── Seleccionar material → modal cantidades ───────────────
         function modificarValor(edrop) {
             openLoading();
-            $("#matrizM tbody tr").remove();
+            $('#matrizM tbody tr').remove();
+
             var formData = new FormData();
             formData.append('id', edrop.id);
-            formData.append('id_proyecto', ID_PROYECTO);
 
             axios.post(urlAdmin + '/admin/buscar/material/disponibilidad', formData)
                 .then((response) => {
                     closeLoading();
-                    if (response.data.success === 1) {
-                        if (response.data.disponible === 1) {
-                            toastr.info('NO HAY INVENTARIO DISPONIBLE');
-                            return;
-                        }
-
-                        $('#id-material-seleccionado').val(edrop.id);
-                        $('#info-material').val(response.data.nombreMaterial);
-                        $('#info-medida').val(response.data.nombreMedida);
-
-                        $.each(response.data.arrayIngreso, function (key, val) {
-                            var markup = "<tr>" +
-                                "<td><input disabled value='" + val.fechaIngreso + "' class='form-control form-control-sm' type='text'></td>" +
-                                "<td><input disabled value='" + val.precioFormat + "' class='form-control form-control-sm' type='text'></td>" +
-                                "<td><input name='arrayCantidadActual[]' disabled " +
-                                "data-cantidadActualFila='" + val.cantidadActual + "' " +
-                                "value='" + val.cantidadActual + "' class='form-control form-control-sm' type='number'></td>" +
-                                "<td><input class='form-control form-control-sm' " +
-                                "data-idfilaentradadetalle='" + val.id + "' " +
-                                "name='arrayCantidadSalida[]' min='0' max='" + val.cantidadActual + "' type='number' " +
-                                "onkeydown=\"return validateInput(event);\" " +
-                                "oninput=\"validateCantidadSalida(this, " + val.cantidadActual + ");\"></td>" +
-                                "</tr>";
-                            $("#matrizM tbody").append(markup);
-                        });
-
-                        $('#modalCantidad').modal('show');
-                    } else {
-                        toastr.error('Error al cargar material');
+                    if (response.data.success !== 1) {
+                        toastr.error('Error al cargar material'); return;
                     }
+                    if (response.data.disponible === 1) {
+                        toastr.info('NO HAY INVENTARIO DISPONIBLE'); return;
+                    }
+
+                    $('#id-material-seleccionado').val(edrop.id);
+                    $('#info-material').val(response.data.nombreMaterial);
+                    $('#info-medida').val(response.data.nombreMedida);
+
+                    $.each(response.data.arrayIngreso, function (key, val) {
+                        var markup =
+                            '<tr>' +
+                            '<td><input disabled value="' + val.fechaIngreso + '" class="form-control form-control-sm" type="text"></td>' +
+                            '<td><input disabled value="' + val.precioFormat + '" class="form-control form-control-sm" type="text"></td>' +
+                            '<td><input name="arrayCantidadActual[]" disabled ' +
+                            'data-cantidadActualFila="' + val.cantidadActual + '" ' +
+                            'value="' + val.cantidadActual + '" class="form-control form-control-sm" type="number"></td>' +
+                            '<td><input class="form-control form-control-sm" ' +
+                            'data-idfilaentradadetalle="' + val.id + '" ' +
+                            'name="arrayCantidadSalida[]" min="0" max="' + val.cantidadActual + '" type="number" ' +
+                            'onkeydown="return validateInput(event);" ' +
+                            'oninput="validateCantidadSalida(this, ' + val.cantidadActual + ');"></td>' +
+                            '</tr>';
+                        $('#matrizM tbody').append(markup);
+                    });
+
+                    $('#modalCantidad').modal('show');
                 })
                 .catch(() => { closeLoading(); toastr.error('Error'); });
         }
 
+        // ── Agregar al detalle local ───────────────────────────────
         function agregarAlDetalle() {
-            var arrayIdEntradaDetalle = $("input[name='arrayCantidadSalida[]']").map(function () { return $(this).attr("data-idfilaentradadetalle"); }).get();
-            var arrayCantidadSalida   = $("input[name='arrayCantidadSalida[]']").map(function () { return $(this).val(); }).get();
-            var arrayCantidadActual   = $("input[name='arrayCantidadActual[]']").map(function () { return $(this).attr("data-cantidadActualFila"); }).get();
+            var arrayIdEntradaDetalle = $("input[name='arrayCantidadSalida[]']")
+                .map(function () { return $(this).attr('data-idfilaentradadetalle'); }).get();
+            var arrayCantidadSalida = $("input[name='arrayCantidadSalida[]']")
+                .map(function () { return $(this).val(); }).get();
+            var arrayCantidadActual = $("input[name='arrayCantidadActual[]']")
+                .map(function () { return $(this).attr('data-cantidadActualFila'); }).get();
 
             var habraSalida = true;
             for (var a = 0; a < arrayCantidadSalida.length; a++) {
                 var fc = arrayCantidadSalida[a];
                 if (fc !== '') {
-                    if (fc <= 0) { toastr.error('Fila #' + (a+1) + ': No se permite cero'); return; }
+                    if (parseInt(fc) <= 0) {
+                        toastr.error('Fila #' + (a + 1) + ': No se permite cero'); return;
+                    }
                     habraSalida = false;
                 }
-                if (fc > Number(arrayCantidadActual[a])) {
-                    toastr.error('Fila #' + (a+1) + ': Supera cantidad actual'); return;
+                if (fc !== '' && parseInt(fc) > parseInt(arrayCantidadActual[a])) {
+                    toastr.error('Fila #' + (a + 1) + ': Supera cantidad actual'); return;
                 }
             }
             if (habraSalida) { toastr.error('Registrar mínimo 1 salida'); return; }
 
             var nombreTexto = document.getElementById('info-material').value;
-            var nFilas = $('#matriz > tbody > tr').length;
+            var nFilas      = $('#matriz > tbody > tr').length;
 
             for (var z = 0; z < arrayCantidadSalida.length; z++) {
-                var fc = arrayCantidadSalida[z];
-                if (fc !== '' && fc != 0) {
+                var fc2 = arrayCantidadSalida[z];
+                if (fc2 !== '' && parseInt(fc2) > 0) {
                     nFilas++;
-                    var markup = "<tr>" +
-                        "<td><p id='fila" + nFilas + "' class='form-control' style='max-width:55px'>" + nFilas + "</p></td>" +
-                        "<td>" +
-                        "<input name='idmaterialArray[]' type='hidden' data-idmaterialArray='" + arrayIdEntradaDetalle[z] + "'>" +
-                        "<input disabled value='" + nombreTexto + "' class='form-control form-control-sm' type='text'>" +
-                        "</td>" +
-                        "<td><input name='salidaArray[]' disabled data-cantidadSalida='" + fc + "' value='" + fc + "' class='form-control form-control-sm' type='text'></td>" +
-                        "<td><button type='button' class='btn btn-danger btn-sm btn-block' onclick='borrarFila(this)'>Borrar</button></td>" +
-                        "</tr>";
-                    $("#matriz tbody").append(markup);
+                    var markup =
+                        '<tr>' +
+                        '<td><span class="num-fila">' + nFilas + '</span></td>' +
+                        '<td>' +
+                        '<input name="idmaterialArray[]" type="hidden" data-idmaterialArray="' + arrayIdEntradaDetalle[z] + '">' +
+                        nombreTexto +
+                        '</td>' +
+                        '<td>' +
+                        '<input name="salidaArray[]" type="hidden" data-cantidadSalida="' + fc2 + '">' +
+                        fc2 +
+                        '</td>' +
+                        '<td>' +
+                        '<button type="button" class="btn btn-danger btn-sm btn-block" onclick="borrarFila(this)">' +
+                        '<i class="fas fa-trash"></i></button>' +
+                        '</td>' +
+                        '</tr>';
+                    $('#matriz tbody').append(markup);
                 }
             }
 
@@ -363,10 +374,10 @@
             toastr.success('Agregado al detalle');
         }
 
+        // ── Guardar ───────────────────────────────────────────────
         function preguntaGuardar() {
             if ($('#matriz > tbody > tr').length === 0) {
-                toastr.error('Agrega al menos un material');
-                return;
+                toastr.error('Agrega al menos un material'); return;
             }
             Swal.fire({
                 title: '¿Guardar materiales extras?',
@@ -383,8 +394,10 @@
         }
 
         function guardarExtras() {
-            var idEntradaDetalle = $("input[name='idmaterialArray[]']").map(function () { return $(this).attr("data-idmaterialArray"); }).get();
-            var salidaCantidad   = $("input[name='salidaArray[]']").map(function ()    { return $(this).attr("data-cantidadSalida"); }).get();
+            var idEntradaDetalle = $("input[name='idmaterialArray[]']")
+                .map(function () { return $(this).attr('data-idmaterialArray'); }).get();
+            var salidaCantidad   = $("input[name='salidaArray[]']")
+                .map(function () { return $(this).attr('data-cantidadSalida'); }).get();
 
             const contenedorArray = [];
             for (var i = 0; i < salidaCantidad.length; i++) {
@@ -409,9 +422,21 @@
                             allowOutsideClick: false,
                             confirmButtonColor: '#28a745',
                             confirmButtonText: 'Aceptar'
-                        }).then((r) => { if (r.value) $("#matriz tbody tr").remove(); });
+                        }).then((r) => {
+                            if (r.value) $('#matriz tbody tr').remove();
+                        });
                     } else if (response.data.success === 2) {
-                        toastr.error('Fila #' + response.data.fila + ': Supera unidades disponibles');
+                        Swal.fire({
+                            title: 'Cantidad no disponible',
+                            html:
+                                'Fila #<b>' + response.data.fila + '</b> — ' +
+                                '<b>' + (response.data.nombre_material ?? 'Material') + '</b><br><br>' +
+                                'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
+                                'Disponible: <b>' + response.data.disponible + '</b>',
+                            icon: 'warning',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
                     } else {
                         toastr.error('Error al guardar');
                     }
@@ -419,18 +444,28 @@
                 .catch(() => { closeLoading(); toastr.error('Error al guardar'); });
         }
 
+        // ── Utilidades ────────────────────────────────────────────
         function borrarFila(el) {
-            el.closest('tr').remove();
-            setearFila();
+            $(el).closest('tr').remove();
+            renumerarFilas();
         }
 
-        function setearFila() {
-            var table  = document.getElementById('matriz');
-            var conteo = 0;
-            for (var r = 1; r < table.rows.length; r++) {
-                conteo++;
-                table.rows[r].cells[0].children[0].innerHTML = conteo;
-            }
+        function renumerarFilas() {
+            $('#matriz tbody tr').each(function (i) {
+                $(this).find('.num-fila').text(i + 1);
+            });
+        }
+
+        function validateInput(event) {
+            const key = event.key;
+            if (['Backspace','ArrowLeft','ArrowRight','Delete','Tab'].includes(key)) return true;
+            if (key === 'e' || key === 'E' || key === '-' || isNaN(Number(key))) return false;
+            return true;
+        }
+
+        function validateCantidadSalida(input, maxCantidad) {
+            input.value = input.value.replace(/[^0-9]/g, '');
+            if (Number(input.value) > maxCantidad) input.value = maxCantidad;
         }
     </script>
 @endsection

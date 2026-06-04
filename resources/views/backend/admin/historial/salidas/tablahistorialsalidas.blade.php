@@ -7,61 +7,49 @@
                         <table id="tabla" class="table table-bordered table-striped">
                             <thead>
                             <tr>
-                                <th style="width: 5%">ID</th>
-                                <th style="width: 18%">Tipo de Proyecto</th>
-                                <th style="width: 10%">Fecha</th>
-                                <th style="width: 22%">Descripción</th>
-                                <th style="width: 7%">Estado</th>
-                                <th style="width: 25%">Opciones</th>
+                                <th style="width:5%">ID</th>
+                                <th style="width:14%">Equipo</th>
+                                <th style="width:10%">Fecha</th>
+                                <th style="width:10%">Talonario</th>
+                                <th style="width:13%">Recibe</th>
+                                <th style="width:18%">Descripción</th>
+                                <th style="width:30%">Opciones</th>
                             </tr>
                             </thead>
                             <tbody>
                             @foreach($arraySalidas as $dato)
-                                @php $cerrado = $dato->tipoproyecto && $dato->tipoproyecto->transferido == 1; @endphp
                                 <tr>
                                     <td>{{ $dato->id }}</td>
-                                    <td>{{ $dato->tipoproyecto->nombre ?? '' }}</td>
+                                    <td>{{ $dato->equipo->nombre ?? '' }}</td>
                                     <td>{{ $dato->fecha_fmt }}</td>
+                                    <td>{{ $dato->ficha_talonario ?? '' }}</td>
+                                    <td>{{ $dato->ficha_nombre ?? '' }}</td>
                                     <td>{{ $dato->descripcion ?? '' }}</td>
                                     <td class="text-center">
-                                        @if($cerrado)
-                                            <span class="badge badge-danger">Cerrado</span>
-                                        @else
-                                            <span class="badge badge-success">Activo</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-
-                                        @if(!$cerrado)
-                                            <button type="button"
-                                                    class="btn btn-success btn-xs"
-                                                    onclick="window.location.href='{{ url('/admin/historial/salidas/extras') }}/' + {{ $dato->id }}">
-                                                <i class="fas fa-plus"></i> Extras
-                                            </button>
-                                        @endif
-
                                         <button type="button"
-                                                style="margin: 3px"
+                                                class="btn btn-success btn-xs"
+                                                style="margin:2px"
+                                                onclick="window.location.href='{{ url('/admin/historial/salidas/extras') }}/{{ $dato->id }}'">
+                                            <i class="fas fa-plus"></i> Extras
+                                        </button>
+                                        <button type="button"
                                                 class="btn btn-info btn-xs"
-                                                onclick="verDetalle({{ $dato->id }}, '{{ addslashes($dato->tipoproyecto->nombre ?? '') }}', '{{ $dato->fecha_fmt }}', {{ $cerrado ? 1 : 0 }})">
+                                                style="margin:2px"
+                                                onclick="verDetalle({{ $dato->id }}, 'Salida #{{ $dato->id }} — {{ $dato->fecha_fmt }}')">
                                             <i class="fas fa-list"></i> Detalle
                                         </button>
-
-                                        @if(!$cerrado)
-                                            <button type="button"
-                                                    style="margin: 3px"
-                                                    class="btn btn-warning btn-xs"
-                                                    onclick="modalEditar({{ $dato->id }})">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <button type="button"
-                                                    style="margin: 3px"
-                                                    class="btn btn-danger btn-xs"
-                                                    onclick="eliminar({{ $dato->id }})">
-                                                <i class="fas fa-trash"></i> Borrar
-                                            </button>
-                                        @endif
-
+                                        <button type="button"
+                                                class="btn btn-warning btn-xs"
+                                                style="margin:2px"
+                                                onclick="modalEditar({{ $dato->id }})">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-danger btn-xs"
+                                                style="margin:2px"
+                                                onclick="eliminar({{ $dato->id }})">
+                                            <i class="fas fa-trash"></i> Borrar
+                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -73,7 +61,3 @@
         </div>
     </div>
 </section>
-
-<script>
-    $('[data-toggle="tooltip"]').tooltip();
-</script>
