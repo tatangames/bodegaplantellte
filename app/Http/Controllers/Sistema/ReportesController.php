@@ -83,6 +83,9 @@ class ReportesController extends Controller
         $sumaTotalCantidad = 0;
         $tabla             = $encabezado;
 
+        // ── Acumulador para el resumen de Objetos Específicos ─────────────────
+        $resumenObjEsp = []; // ['codigo' => ['cantidad' => x, 'total' => y]]
+
         // ── CABECERA COLUMNAS ─────────────────────────────────────────────
         $theadSalidas = "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px; border:0.8px solid #aaa;'>
@@ -99,7 +102,7 @@ class ReportesController extends Controller
     <tbody>";
 
         // ════════════════════════════════════════════════════════════════
-        // TIPO 1: JUNTOS  (agrupa todos los materiales, subtotales por Obj. Espec.)
+        // TIPO 1: JUNTOS
         // ════════════════════════════════════════════════════════════════
         if ($tipo == 1) {
 
@@ -168,6 +171,13 @@ class ReportesController extends Controller
                 $granTotal         += $info['total'];
                 $sumaTotalCantidad += $info['cantidad'];
 
+                // ── Acumular en resumen ──
+                if (!isset($resumenObjEsp[$info['objespec']])) {
+                    $resumenObjEsp[$info['objespec']] = ['cantidad' => 0, 'total' => 0];
+                }
+                $resumenObjEsp[$info['objespec']]['cantidad'] += $info['cantidad'];
+                $resumenObjEsp[$info['objespec']]['total']    += $info['total'];
+
                 $precioFmt = number_format($info['precio'], 4);
                 $totalFmt  = number_format($info['total'], 4);
 
@@ -200,7 +210,7 @@ class ReportesController extends Controller
 </table>";
 
             // ════════════════════════════════════════════════════════════════
-            // TIPO 2: SEPARADO (una viñeta por salida con su ficha)
+            // TIPO 2: SEPARADO
             // ════════════════════════════════════════════════════════════════
         } else {
 
@@ -219,7 +229,6 @@ class ReportesController extends Controller
                 $fichaTalon  = $salida->ficha_talonario ?? '';
                 $equipo      = $salida->equipo->nombre  ?? '';
 
-                // ── Viñeta de encabezado de la salida ────────────────────
                 $tabla .= "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:2px; border:0.8px solid #ccc;'>
     <tr>
@@ -260,6 +269,13 @@ class ReportesController extends Controller
                     $subtotal          += $total;
                     $sumaTotalCantidad += $cantidad;
                     $subtotalCantidad  += $cantidad;
+
+                    // ── Acumular en resumen ──
+                    if (!isset($resumenObjEsp[$objEsp])) {
+                        $resumenObjEsp[$objEsp] = ['cantidad' => 0, 'total' => 0];
+                    }
+                    $resumenObjEsp[$objEsp]['cantidad'] += $cantidad;
+                    $resumenObjEsp[$objEsp]['total']    += $total;
 
                     $precioFmt = number_format($precio, 4);
                     $totalFmt  = number_format($total, 4);
@@ -302,6 +318,53 @@ class ReportesController extends Controller
         <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL GENERAL:&nbsp;&nbsp;</td>
         <td style='font-weight:bold; font-size:13px; width:18%; border-top:2px solid #000; padding-top:6px;'>\$ $granTotalFmt</td>
     </tr>
+</table>";
+
+        // ════════════════════════════════════════════════════════════════
+        // CUADRO RESUMEN POR OBJETO ESPECÍFICO
+        // ════════════════════════════════════════════════════════════════
+        ksort($resumenObjEsp); // Ordenar por código de Obj. Esp.
+
+        $tabla .= "
+<div style='height:18px; line-height:18px; font-size:1px;'>&nbsp;</div>
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <thead>
+        <tr style='background:#6c757d;'>
+            <td colspan='3' style='color:#fff; font-weight:bold; font-size:12px; padding:6px 8px; border:0.8px solid #888; text-align:center; letter-spacing:0.5px;'>
+                RESUMEN POR CODIGO PRESUPUESTARIO
+            </td>
+        </tr>
+        <tr style='background:#6c757d;'>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:20%;'>Cod. Presu.</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Cantidad Total</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Monto Total (\$)</td>
+        </tr>
+    </thead>
+    <tbody>";
+
+        $filaIndex = 0;
+        foreach ($resumenObjEsp as $codigo => $datos) {
+            $bgFila    = ($filaIndex % 2 === 0) ? '#ffffff' : '#f0f4fa';
+            $cantFmt   = number_format($datos['cantidad'], 2);
+            $montoFmt  = number_format($datos['total'], 4);
+
+            $tabla .= "
+        <tr style='background:{$bgFila};'>
+            <td style='font-size:11px; font-weight:bold; padding:5px 8px; border:0.8px solid #ccc;'>{$codigo}</td>
+            <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>{$cantFmt}</td>
+            <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>\$ {$montoFmt}</td>
+        </tr>";
+            $filaIndex++;
+        }
+
+        // Fila de totales del resumen
+        $tabla .= "
+        <tr style='background:#e9ecef;'>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb;'>TOTAL</td>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>{$sumaTotalCantidadFmt}</td>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>\$ {$granTotalFmt}</td>
+        </tr>
+    </tbody>
 </table>";
 
         $mpdf = new \Mpdf\Mpdf([
@@ -386,6 +449,9 @@ class ReportesController extends Controller
         $sumaTotalCantidad = 0;
         $tabla             = $encabezado;
 
+        // ── Acumulador para el resumen de Objetos Específicos ─────────────────
+        $resumenObjEsp = [];
+
         // ── CABECERA COLUMNAS ─────────────────────────────────────────────
         $theadEntradas = "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px; border:0.8px solid #aaa;'>
@@ -467,6 +533,13 @@ class ReportesController extends Controller
                 $subtotalCantCod  += $info['cantidad'];
                 $granTotal        += $info['total'];
                 $sumaTotalCantidad += $info['cantidad'];
+
+                // ── Acumular en resumen ──
+                if (!isset($resumenObjEsp[$info['objespec']])) {
+                    $resumenObjEsp[$info['objespec']] = ['cantidad' => 0, 'total' => 0];
+                }
+                $resumenObjEsp[$info['objespec']]['cantidad'] += $info['cantidad'];
+                $resumenObjEsp[$info['objespec']]['total']    += $info['total'];
 
                 $precioFmt = number_format($info['precio'], 4);
                 $totalFmt  = number_format($info['total'], 4);
@@ -554,6 +627,13 @@ class ReportesController extends Controller
                     $sumaTotalCantidad += $cantidad;
                     $subtotalCantidad  += $cantidad;
 
+                    // ── Acumular en resumen ──
+                    if (!isset($resumenObjEsp[$objEsp])) {
+                        $resumenObjEsp[$objEsp] = ['cantidad' => 0, 'total' => 0];
+                    }
+                    $resumenObjEsp[$objEsp]['cantidad'] += $cantidad;
+                    $resumenObjEsp[$objEsp]['total']    += $total;
+
                     $precioFmt = number_format($precio, 4);
                     $totalFmt  = number_format($total, 4);
 
@@ -588,14 +668,60 @@ class ReportesController extends Controller
         $sumaTotalCantidadFmt = number_format($sumaTotalCantidad, 2);
 
         $tabla .= "
-        <table width='100%' style='margin-top:10px; border-collapse:collapse;'>
-            <tr>
-                <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL CANTIDAD:&nbsp;&nbsp;</td>
-                <td style='font-weight:bold; font-size:13px; width:12%; border-top:2px solid #000; padding-top:6px;'>$sumaTotalCantidadFmt</td>
-                <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL GENERAL:&nbsp;&nbsp;</td>
-                <td style='font-weight:bold; font-size:13px; width:18%; border-top:2px solid #000; padding-top:6px;'>\$ $granTotalFmt</td>
-            </tr>
-        </table>";
+<table width='100%' style='margin-top:10px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL CANTIDAD:&nbsp;&nbsp;</td>
+        <td style='font-weight:bold; font-size:13px; width:12%; border-top:2px solid #000; padding-top:6px;'>$sumaTotalCantidadFmt</td>
+        <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL GENERAL:&nbsp;&nbsp;</td>
+        <td style='font-weight:bold; font-size:13px; width:18%; border-top:2px solid #000; padding-top:6px;'>\$ $granTotalFmt</td>
+    </tr>
+</table>";
+
+        // ════════════════════════════════════════════════════════════════
+        // CUADRO RESUMEN POR OBJETO ESPECÍFICO
+        // ════════════════════════════════════════════════════════════════
+        ksort($resumenObjEsp);
+
+        $tabla .= "
+<div style='height:18px; line-height:18px; font-size:1px;'>&nbsp;</div>
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <thead>
+        <tr style='background:#6c757d;'>
+            <td colspan='3' style='color:#fff; font-weight:bold; font-size:12px; padding:6px 8px; border:0.8px solid #888; text-align:center; letter-spacing:0.5px;'>
+                RESUMEN POR CODIGO PRESUPUESTARIO
+            </td>
+        </tr>
+        <tr style='background:#6c757d;'>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:20%;'>Cod. Presu.</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Cantidad Total</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Monto Total (\$)</td>
+        </tr>
+    </thead>
+    <tbody>";
+
+        $filaIndex = 0;
+        foreach ($resumenObjEsp as $codigo => $datos) {
+            $bgFila   = ($filaIndex % 2 === 0) ? '#ffffff' : '#f0f0f0';
+            $cantFmt  = number_format($datos['cantidad'], 2);
+            $montoFmt = number_format($datos['total'], 4);
+
+            $tabla .= "
+        <tr style='background:{$bgFila};'>
+            <td style='font-size:11px; font-weight:bold; padding:5px 8px; border:0.8px solid #ccc;'>{$codigo}</td>
+            <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>{$cantFmt}</td>
+            <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>\$ {$montoFmt}</td>
+        </tr>";
+            $filaIndex++;
+        }
+
+        $tabla .= "
+        <tr style='background:#e9ecef;'>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb;'>TOTAL</td>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>{$sumaTotalCantidadFmt}</td>
+            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>\$ {$granTotalFmt}</td>
+        </tr>
+    </tbody>
+</table>";
 
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'       => sys_get_temp_dir(),
@@ -613,7 +739,6 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output('entradas_' . date('Ymd_His') . '.pdf', 'I');
     }
-
 
 
 
