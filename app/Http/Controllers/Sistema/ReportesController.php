@@ -231,22 +231,41 @@ class ReportesController extends Controller
 
                 $tabla .= "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:2px; border:0.8px solid #ccc;'>
+
     <tr>
-        <td style='width:13%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Fecha</td>
-        <td style='width:20%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$fechaFmt</td>
-        <td style='width:15%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Equipo</td>
-        <td style='width:52%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$equipo</td>
+        <td style='width:15%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            Equipo
+        </td>
+        <td colspan='3' style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>
+            $equipo
+        </td>
     </tr>
+
     <tr>
-        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Ficha</td>
-        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$fichaNombre</td>
-        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Talonario</td>
-        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$fichaTalon</td>
+        <td style='width:15%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            Ficha
+        </td>
+        <td style='width:35%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>
+            $fichaNombre
+        </td>
+
+        <td style='width:15%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            Talonario
+        </td>
+        <td style='width:35%; border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>
+            $fichaTalon
+        </td>
     </tr>
+
     <tr>
-        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Descripción</td>
-        <td colspan='3' style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$descripcion</td>
+        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            Descripción
+        </td>
+        <td colspan='3' style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>
+            $descripcion
+        </td>
     </tr>
+
 </table>";
 
                 $tabla .= $theadSalidas;
