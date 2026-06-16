@@ -103,7 +103,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Desripción: <small class="text-muted">(Opcional)</small></label>
+                                            <label>Ficha Nombre: <small class="text-muted">(Opcional)</small></label>
                                             <input type="text" class="form-control" autocomplete="off"
                                                    maxlength="100" id="ficha_nombre" placeholder="Nombre...">
                                         </div>

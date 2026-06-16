@@ -725,7 +725,7 @@ class ReportesController extends Controller
     </tr>
     <tr>
         <td colspan='3' style='padding-top:6px;'>
-            <strong>DESCRIPCIÓN:</strong> &nbsp; " . e($nombreRecibe) . "
+            <strong>NOMBRE:</strong> &nbsp; " . e($nombreRecibe) . "
         </td>
     </tr>";
 
