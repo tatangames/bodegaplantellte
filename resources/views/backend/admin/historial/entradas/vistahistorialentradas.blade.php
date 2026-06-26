@@ -98,11 +98,11 @@
                     <div class="card-body">
                         <div class="row align-items-end">
                             <div class="col-md-3">
-                                <label class="font-weight-bold">Fecha desde</label>
+                                <label class="font-weight-bold">Fecha desde (Opcional)</label>
                                 <input type="date" class="form-control" id="filtro-fecha-desde">
                             </div>
                             <div class="col-md-3">
-                                <label class="font-weight-bold">Fecha hasta</label>
+                                <label class="font-weight-bold">Fecha hasta (Opcional)</label>
                                 <input type="date" class="form-control" id="filtro-fecha-hasta">
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
