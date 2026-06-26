@@ -33,4 +33,9 @@ class Entradas extends Model
     {
         return $this->belongsTo(TipoCompra::class, 'id_tipocompra');
     }
+
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor');
+    }
 }

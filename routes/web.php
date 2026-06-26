@@ -95,17 +95,12 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/inventario/catalogo', [RepuestosController::class, 'inventarioConteoDeMateriales']);
 
 
-
-
-
-
-
-
-
-
-
-
-
+    // --- PROVEEDOR ---
+    Route::get('/admin/proveedor/index', [ConfiguracionController::class,'vistaProveedor'])->name('admin.proveedor.index');
+    Route::get('/admin/proveedor/tabla/index', [ConfiguracionController::class,'tablaProveedor']);
+    Route::post('/admin/proveedor/nuevo', [ConfiguracionController::class,'nuevoProveedor']);
+    Route::post('/admin/proveedor/informacion', [ConfiguracionController::class,'infoProveedor']);
+    Route::post('/admin/proveedor/editar', [ConfiguracionController::class,'actualizarProveedor']);
 
 
     // --- REGISTRAR ENTRADA ---

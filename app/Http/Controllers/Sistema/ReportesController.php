@@ -598,6 +598,7 @@ class ReportesController extends Controller
             $query = Entradas::with([
                 'tipoEntrada',
                 'tipoCompra',
+                'proveedor',                               // ← eager load proveedor
                 'detalle.material.unidadMedida',
                 'detalle.material.objetoEspecifico',
             ]);
@@ -606,10 +607,11 @@ class ReportesController extends Controller
 
             foreach ($arrayEntradas as $entrada) {
                 $fechaFmt    = date('d-m-Y', strtotime($entrada->fecha));
-                $tipoEntrada = $entrada->tipoEntrada->nombre ?? '';
-                $tipoCompra  = $entrada->tipoCompra->nombre  ?? '';
-                $factura     = $entrada->factura     ?? '';
-                $descripcion = $entrada->descripcion ?? '';
+                $tipoEntrada = $entrada->tipoEntrada->nombre   ?? '';
+                $tipoCompra  = $entrada->tipoCompra->nombre    ?? '';
+                $proveedor   = $entrada->proveedor->nombre     ?? '—';   // ← nuevo
+                $factura     = $entrada->factura               ?? '';
+                $descripcion = $entrada->descripcion           ?? '';
 
                 $tabla .= "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:2px; border:0.8px solid #ccc;'>
@@ -624,7 +626,9 @@ class ReportesController extends Controller
     <tr>
         <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Factura</td>
         <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$factura</td>
-        <td colspan='4' style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$descripcion</td>
+        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px; font-weight:bold; background:#f5f5f5;'>Proveedor</td>
+        <td style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$proveedor</td>
+        <td colspan='2' style='border:0.8px solid #ccc; padding:5px 7px; font-size:11px;'>$descripcion</td>
     </tr>
 </table>";
 
@@ -758,7 +762,6 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output('entradas_' . date('Ymd_His') . '.pdf', 'I');
     }
-
 
 
 

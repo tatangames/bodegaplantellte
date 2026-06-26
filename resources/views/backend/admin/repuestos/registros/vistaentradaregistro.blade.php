@@ -39,13 +39,63 @@
     </li>
 @endsection
 
-@section('content')
-
+@section('css')
     <style>
         #matriz { table-layout: auto; word-break: break-word; width: 100%; }
         #matriz-busqueda { table-layout: fixed; }
         *:focus { outline: none; }
+
+        #fila-total td {
+            font-weight: bold;
+            background-color: #f4f6f9;
+            font-size: 1.05rem;
+        }
+
+        /* ══ Fix Select2 + modal zoom ══════════════════════════════════════════ */
+        .select2-container--open,
+        .select2-dropdown,
+        .select2-dropdown--below,
+        .select2-dropdown--above { z-index: 99999 !important; }
+        .select2-dropdown { box-sizing: border-box !important; }
+
+        .modal .select2-container--bootstrap-5 .select2-selection { min-height: 38px !important; }
+        .modal .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+            display: flex !important; align-items: center !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding: 0 !important; line-height: 1.5 !important; color: #212529 !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 36px !important; top: 1px !important; right: 6px !important;
+        }
+        .select2-search--dropdown { padding: 8px !important; }
+        .select2-search--dropdown .select2-search__field {
+            width: 100% !important; padding: 6px 10px !important;
+            border: 1px solid #ced4da !important; border-radius: 4px !important;
+            font-size: 13px !important; box-sizing: border-box !important;
+            pointer-events: auto !important; user-select: text !important;
+            -webkit-user-select: text !important; cursor: text !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+            outline: none !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option {
+            font-size: 13px !important; padding: 6px 12px !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #3b82f6 !important; color: #fff !important;
+        }
     </style>
+@stop
+
+@section('content')
 
     <div id="divcontenedor">
 
@@ -70,7 +120,8 @@
                                     <div class="col-md-4">
                                         <div class="form-group">
                                             <label>Factura (Opcional):</label>
-                                            <input type="text" class="form-control" autocomplete="off" maxlength="100" id="factura">
+                                            <input type="text" class="form-control" autocomplete="off"
+                                                   maxlength="100" id="factura">
                                         </div>
                                     </div>
                                 </div>
@@ -100,14 +151,30 @@
                                     </div>
                                 </div>
 
+                                {{-- Proveedor (Opcional) --}}
                                 <div class="row">
-                                    <div class="col-md-8">
+                                    <div class="col-md-6">
                                         <div class="form-group">
-                                            <label>Descripción (Opcional):</label>
-                                            <input type="text" class="form-control" autocomplete="off" maxlength="800" id="descripcion">
+                                            <label>Proveedor: <small class="text-muted">(Opcional)</small></label>
+                                            <select class="form-control" id="select-proveedor" style="width:100%">
+                                                <option value="">— Sin asignar —</option>
+                                                @foreach($arrayProveedor as $prov)
+                                                    <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
-                                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Descripción (Opcional):</label>
+                                            <input type="text" class="form-control" autocomplete="off"
+                                                   maxlength="800" id="descripcion">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-12 d-flex align-items-end justify-content-end">
                                         <div class="form-group">
                                             <button type="button" onclick="abrirModal()" class="btn btn-primary btn-sm">
                                                 <i class="fas fa-plus"></i> Agregar Material
@@ -178,6 +245,20 @@
                                     </div>
                                 </div>
 
+                                {{-- Preview subtotal en modal --}}
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="text-success font-weight-bold">
+                                                <i class="fas fa-calculator"></i> Subtotal:
+                                            </label>
+                                            <input type="text" id="preview-subtotal" class="form-control font-weight-bold text-success"
+                                                   readonly placeholder="$0.00"
+                                                   style="background:#f4f9f4; font-size:1.1rem;">
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </form>
                     </div>
@@ -207,15 +288,23 @@
                             <table class="table table-bordered table-hover mb-0" id="matriz">
                                 <thead>
                                 <tr>
-                                    <th style="width:6%">#</th>
-                                    <th style="width:38%">Material</th>
-                                    <th style="width:12%">Cantidad</th>
-                                    <th style="width:16%">Detalle</th>
-                                    <th style="width:14%">Precio</th>
-                                    <th style="width:14%">Opciones</th>
+                                    <th style="width:5%">#</th>
+                                    <th style="width:33%">Material</th>
+                                    <th style="width:10%">Cantidad</th>
+                                    <th style="width:13%">Detalle</th>
+                                    <th style="width:12%">Precio Unit.</th>
+                                    <th style="width:12%">Subtotal</th>
+                                    <th style="width:15%">Opciones</th>
                                 </tr>
                                 </thead>
                                 <tbody></tbody>
+                                <tfoot>
+                                <tr id="fila-total">
+                                    <td colspan="5" class="text-right">TOTAL GENERAL:</td>
+                                    <td id="total-general" class="text-success">$0.00</td>
+                                    <td></td>
+                                </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -242,51 +331,83 @@
     <script src="{{ asset('js/select2.min.js') }}" type="text/javascript"></script>
 
     <script>
-        var seguroBuscador = true;
+        var seguroBuscador      = true;
         var txtContenedorGlobal = null;
+
+        // ══ Fix Bootstrap _enforceFocus (Select2 zoom) ════════════════
+        if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
+            var __modalProto = $.fn.modal.Constructor.prototype;
+            if (__modalProto._enforceFocus) { __modalProto._enforceFocus = function () {}; }
+            if (__modalProto.enforceFocus)  { __modalProto.enforceFocus  = function () {}; }
+            if (__modalProto._focustrap)    { __modalProto._focustrap = { activate: function(){}, deactivate: function(){} }; }
+        }
 
         $(function () {
             // Fecha hoy
             var hoy = new Date();
             document.getElementById('fecha').value = hoy.toJSON().slice(0, 10);
 
-            // Select2
-            $('#select-tipoentrada').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $('body'),
-                language: { noResults: function () { return 'No encontrado'; } }
+            // Select2 con body como padre (fix zoom)
+            ['select-tipoentrada', 'select-tipocompra', 'select-proveedor'].forEach(function (id) {
+                $('#' + id).select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('body'),
+                    language: { noResults: function () { return 'No encontrado'; } },
+                    width: '100%'
+                });
             });
-            $('#select-tipocompra').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $('body'),
-                language: { noResults: function () { return 'No encontrado'; } }
+
+            // Auto-enfocar campo de búsqueda al abrir Select2
+            $(document).on('select2:open', function () {
+                var field = document.querySelector('.select2-container--open .select2-search__field');
+                if (field) field.focus();
             });
 
             // Cerrar droplista al click fuera
-            $(document).click(function () {
-                $('.droplista').hide();
+            $(document).click(function () { $('.droplista').hide(); });
+
+            // Preview subtotal en tiempo real dentro del modal
+            $('#cantidad, #precio-producto').on('input', function () {
+                calcularPreviewSubtotal();
             });
         });
+
+        // ── Preview subtotal en el modal ──────────────────────────────
+        function calcularPreviewSubtotal() {
+            var cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+            var precio   = parseFloat(document.getElementById('precio-producto').value) || 0;
+            var subtotal = cantidad * precio;
+            document.getElementById('preview-subtotal').value = '$' + subtotal.toFixed(4);
+        }
+
+        // ── Recalcular total general de la tabla ──────────────────────
+        function recalcularTotal() {
+            var total = 0;
+            $("input[name='arraySubtotal[]']").each(function () {
+                total += parseFloat($(this).attr('data-subtotal')) || 0;
+            });
+            document.getElementById('total-general').textContent = '$' + total.toFixed(4);
+        }
 
         // ── Modal ─────────────────────────────────────────────────────
         function abrirModal() {
             document.getElementById('formulario-repuesto').reset();
+            document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0').attr('data-nombre', '');
             $('#modalRepuesto').modal({ backdrop: 'static', keyboard: false });
         }
 
         // ── Agregar fila a tabla ──────────────────────────────────────
         function agregarFila() {
-            var repuesto     = document.getElementById('repuesto');
-            var nomRepuesto  = repuesto.value.trim();
-            var idMaterial   = repuesto.dataset.info;
-            var nombreMat    = repuesto.dataset.nombre || nomRepuesto;
-            var cantidad     = document.getElementById('cantidad').value;
-            var codigo       = document.getElementById('codigo').value;
-            var precio       = document.getElementById('precio-producto').value;
+            var repuesto   = document.getElementById('repuesto');
+            var idMaterial = repuesto.dataset.info;
+            var nombreMat  = repuesto.dataset.nombre || repuesto.value.trim();
+            var cantidad   = document.getElementById('cantidad').value;
+            var codigo     = document.getElementById('codigo').value;
+            var precio     = document.getElementById('precio-producto').value;
 
-            var reglaEntero   = /^[0-9]\d*$/;
-            var reglaDecimal  = /^([0-9]+\.?[0-9]{0,4})$/;
+            var reglaEntero  = /^[0-9]\d*$/;
+            var reglaDecimal = /^([0-9]+\.?[0-9]{0,4})$/;
 
             if (idMaterial == 0 || idMaterial === '') {
                 toastr.error('Seleccione un material de la lista'); return;
@@ -304,7 +425,8 @@
                 toastr.error('Precio máximo 9 millones'); return;
             }
 
-            var nFilas = $('#matriz tbody tr').length + 1;
+            var subtotal = (parseFloat(cantidad) * parseFloat(precio)).toFixed(4);
+            var nFilas   = $('#matriz tbody tr').length + 1;
 
             var fila = `
                 <tr>
@@ -327,6 +449,11 @@
                         $${parseFloat(precio).toFixed(4)}
                     </td>
                     <td>
+                        <input name="arraySubtotal[]" type="hidden"
+                               data-subtotal="${subtotal}" value="${subtotal}">
+                        <span class="font-weight-bold text-success">$${subtotal}</span>
+                    </td>
+                    <td>
                         <button type="button" class="btn btn-danger btn-sm btn-block"
                                 onclick="borrarFila(this)">
                             <i class="fas fa-trash"></i> Borrar
@@ -335,9 +462,11 @@
                 </tr>`;
 
             $('#matriz tbody').append(fila);
+            recalcularTotal();
             toastr.success('Material agregado');
 
             document.getElementById('formulario-repuesto').reset();
+            document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0').attr('data-nombre', '');
         }
 
@@ -345,6 +474,7 @@
         function borrarFila(btn) {
             $(btn).closest('tr').remove();
             renumerarFilas();
+            recalcularTotal();
         }
 
         function renumerarFilas() {
@@ -359,14 +489,12 @@
             seguroBuscador = false;
             txtContenedorGlobal = e;
 
-            var texto = e.value;
-            if (texto === '') { $(e).attr('data-info', 0); }
+            if (e.value === '') { $(e).attr('data-info', 0); }
 
-            axios.post(urlAdmin + '/admin/buscar/material', { query: texto })
+            axios.post(urlAdmin + '/admin/buscar/material', { query: e.value })
                 .then((response) => {
                     seguroBuscador = true;
-                    var row = $(e).closest('tr');
-                    row.find('.droplista').fadeIn().html(response.data);
+                    $(e).closest('tr').find('.droplista').fadeIn().html(response.data);
                 })
                 .catch(() => { seguroBuscador = true; });
         }
@@ -402,6 +530,7 @@
             var descripcion = document.getElementById('descripcion').value;
             var tipoentrada = document.getElementById('select-tipoentrada').value;
             var tipocompra  = document.getElementById('select-tipocompra').value;
+            var proveedor   = document.getElementById('select-proveedor').value;
 
             if (!fecha)       { toastr.error('Fecha es requerida'); return; }
             if (!tipoentrada) { toastr.error('Tipo de Entrada es requerido'); return; }
@@ -419,11 +548,11 @@
             $('#matriz tbody tr').each(function (i) {
                 if (!valido) return;
 
-                var idMaterial  = $(this).find('input[name="descripcionArray[]"]').attr('data-info');
-                var nombre      = $(this).find('input[name="descripcionArray[]"]').attr('data-nombre');
+                var idMaterial   = $(this).find('input[name="descripcionArray[]"]').attr('data-info');
+                var nombre       = $(this).find('input[name="descripcionArray[]"]').attr('data-nombre');
                 var infoCantidad = $(this).find('input[name="cantidadArray[]"]').val();
-                var infoCodigo  = $(this).find('input[name="codigoArray[]"]').val();
-                var infoPrecio  = $(this).find('input[name="arrayPrecio[]"]').val();
+                var infoCodigo   = $(this).find('input[name="codigoArray[]"]').val();
+                var infoPrecio   = $(this).find('input[name="arrayPrecio[]"]').val();
 
                 if (!idMaterial || idMaterial == 0) {
                     colorRojoTabla(i);
@@ -452,6 +581,7 @@
             formData.append('descripcion',     descripcion);
             formData.append('tipoentrada',     tipoentrada);
             formData.append('tipocompra',      tipocompra);
+            formData.append('proveedor',       proveedor);
             formData.append('contenedorArray', JSON.stringify(contenedorArray));
 
             openLoading();
@@ -478,10 +608,12 @@
 
         function limpiar() {
             document.getElementById('descripcion').value = '';
-            document.getElementById('factura').value = '';
+            document.getElementById('factura').value     = '';
             $('#select-tipoentrada').val('').trigger('change');
             $('#select-tipocompra').val('').trigger('change');
+            $('#select-proveedor').val('').trigger('change');
             $('#matriz tbody tr').remove();
+            recalcularTotal();
         }
     </script>
 @endsection

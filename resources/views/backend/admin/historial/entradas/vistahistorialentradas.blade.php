@@ -39,6 +39,52 @@
     </li>
 @endsection
 
+@section('css')
+    <style>
+        /* ══ Fix Select2 + modal zoom ══════════════════════════════════════════ */
+        .select2-container--open,
+        .select2-dropdown,
+        .select2-dropdown--below,
+        .select2-dropdown--above { z-index: 99999 !important; }
+        .select2-dropdown { box-sizing: border-box !important; }
+
+        .modal .select2-container--bootstrap-5 .select2-selection { min-height: 38px !important; }
+        .modal .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+            display: flex !important; align-items: center !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding: 0 !important; line-height: 1.5 !important; color: #212529 !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 36px !important; top: 1px !important; right: 6px !important;
+        }
+        .select2-search--dropdown { padding: 8px !important; }
+        .select2-search--dropdown .select2-search__field {
+            width: 100% !important; padding: 6px 10px !important;
+            border: 1px solid #ced4da !important; border-radius: 4px !important;
+            font-size: 13px !important; box-sizing: border-box !important;
+            pointer-events: auto !important; user-select: text !important;
+            -webkit-user-select: text !important; cursor: text !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+            outline: none !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option {
+            font-size: 13px !important; padding: 6px 12px !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #3b82f6 !important; color: #fff !important;
+        }
+    </style>
+@stop
+
 @section('content')
     <div id="divcontenedor">
 
@@ -128,6 +174,15 @@
                                 <option value="">Seleccione...</option>
                                 @foreach($arrayTipoCompra as $tc)
                                     <option value="{{ $tc->id }}">{{ $tc->nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Proveedor <small class="text-muted">(Opcional)</small></label>
+                            <select id="select-proveedor-editar" class="form-control" style="width:100%">
+                                <option value="">— Sin asignar —</option>
+                                @foreach($arrayProveedor as $prov)
+                                    <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -256,6 +311,14 @@
         var _entradaIdActual     = null;
         var _entradaTituloActual = '';
 
+        // ══ Fix Bootstrap _enforceFocus (Select2 zoom) ════════════════
+        if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
+            var __modalProto = $.fn.modal.Constructor.prototype;
+            if (__modalProto._enforceFocus) { __modalProto._enforceFocus = function () {}; }
+            if (__modalProto.enforceFocus)  { __modalProto.enforceFocus  = function () {}; }
+            if (__modalProto._focustrap)    { __modalProto._focustrap = { activate: function(){}, deactivate: function(){} }; }
+        }
+
         $(function () {
             const ruta = "{{ url('/admin/historial/entradas/tabla') }}";
 
@@ -320,16 +383,20 @@
 
             cargarTabla();
 
-            // ── Select2 modales ───────────────────────────────────
-            $('#select-tipoentrada-editar').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return 'No encontrado'; } }
+            // ── Select2 modales con body como padre (fix zoom) ────
+            ['select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar'].forEach(function (id) {
+                $('#' + id).select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('body'),
+                    language: { noResults: function () { return 'No encontrado'; } },
+                    width: '100%'
+                });
             });
-            $('#select-tipocompra-editar').select2({
-                theme: 'bootstrap-5',
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return 'No encontrado'; } }
+
+            // Auto-enfocar campo de búsqueda al abrir Select2
+            $(document).on('select2:open', function () {
+                var field = document.querySelector('.select2-container--open .select2-search__field');
+                if (field) field.focus();
             });
 
             // ── Delegación botones detalle ────────────────────────
@@ -366,6 +433,8 @@
                         $('#descripcion-editar').val(e.descripcion ?? '');
                         $('#select-tipoentrada-editar').val(e.id_tipoentrada).trigger('change');
                         $('#select-tipocompra-editar').val(e.id_tipocompra).trigger('change');
+                        // Proveedor: si es null queda en '' (Sin asignar)
+                        $('#select-proveedor-editar').val(e.id_proveedor ?? '').trigger('change');
                         $('#modalEditar').modal('show');
                     } else {
                         toastr.error('No se pudo cargar la información');
@@ -379,6 +448,7 @@
             const fecha       = $('#fecha-editar').val().trim();
             const tipoentrada = $('#select-tipoentrada-editar').val();
             const tipocompra  = $('#select-tipocompra-editar').val();
+            const proveedor   = $('#select-proveedor-editar').val();
             const factura     = $('#factura-editar').val().trim();
             const descripcion = $('#descripcion-editar').val().trim();
 
@@ -392,6 +462,7 @@
             formData.append('fecha',          fecha);
             formData.append('id_tipoentrada', tipoentrada);
             formData.append('id_tipocompra',  tipocompra);
+            formData.append('id_proveedor',   proveedor);   // opcional, puede ser ''
             formData.append('factura',        factura);
             formData.append('descripcion',    descripcion);
 

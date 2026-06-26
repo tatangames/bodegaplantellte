@@ -12,6 +12,7 @@
                                 <th style="width:14%">Tipo Compra</th>
                                 <th style="width:10%">Fecha</th>
                                 <th style="width:10%">Factura</th>
+                                <th style="width:10%">Proveedor</th>
                                 <th style="width:22%">Descripción</th>
                                 <th style="width:16%">Opciones</th>
                             </tr>
@@ -24,6 +25,7 @@
                                     <td>{{ $dato->tipoCompra->nombre ?? '' }}</td>
                                     <td>{{ $dato->fecha_fmt }}</td>
                                     <td>{{ $dato->factura ?? '' }}</td>
+                                    <td>{{ $dato->proveedor->nombre ?? '' }}</td>
                                     <td>{{ $dato->descripcion ?? '' }}</td>
                                     <td class="text-center">
                                         <button type="button"

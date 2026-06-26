@@ -12,6 +12,7 @@ use App\Models\HistorialEntradas;
 use App\Models\HistorialEntradasDeta;
 use App\Models\Materiales;
 use App\Models\ObjetoEspecifico;
+use App\Models\Proveedor;
 use App\Models\SalidasDetalle;
 use App\Models\TipoCompra;
 use App\Models\TipoEntrada;
@@ -139,9 +140,10 @@ class RepuestosController extends Controller
     {
         $arrayTipoEntrada = TipoEntrada::orderBy('nombre')->get();
         $arrayTipoCompra  = TipoCompra::orderBy('nombre')->get();
+        $arrayProveedor   = Proveedor::orderBy('nombre')->get();
 
         return view('backend.admin.repuestos.registros.vistaentradaregistro',
-            compact('arrayTipoEntrada', 'arrayTipoCompra'));
+            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor'));
     }
 
 
@@ -195,6 +197,8 @@ class RepuestosController extends Controller
     // GUARDAR ENTRADAS
     public function guardarEntrada(Request $request)
     {
+
+        Log::info($request->all());
         $validator = Validator::make($request->all(), [
             'fecha'        => 'required|date',
             'tipoentrada'  => 'required',
@@ -221,6 +225,7 @@ class RepuestosController extends Controller
             $entrada->fecha          = $request->fecha;
             $entrada->factura        = $request->factura;
             $entrada->descripcion    = $request->descripcion;
+            $entrada->id_proveedor   = $request->proveedor ?: null;  // opcional
             $entrada->save();
 
             // ── Detalle ──
@@ -278,6 +283,7 @@ class RepuestosController extends Controller
 
 
 
+
     //*******************************************
 
     public function vistaDetalleMaterial($id){
@@ -322,7 +328,6 @@ class RepuestosController extends Controller
 
         return view('backend.admin.inventario.detalle.tabladetallematerial', compact('lista'));
     }
-
 
 
 }

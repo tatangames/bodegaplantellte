@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('id_tipoentrada')->unsigned();
             $table->bigInteger('id_tipocompra')->unsigned();
+            $table->bigInteger('id_proveedor')->unsigned();
 
             $table->date('fecha');
             $table->string('factura', 100)->nullable();
@@ -22,6 +23,7 @@ return new class extends Migration
 
             $table->foreign('id_tipoentrada')->references('id')->on('tipo_entrada');
             $table->foreign('id_tipocompra')->references('id')->on('tipo_compra');
+            $table->foreign('id_proveedor')->references('id')->on('proveedor');
         });
     }
 

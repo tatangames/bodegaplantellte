@@ -7,23 +7,26 @@ use App\Models\Cuenta;
 use App\Models\Departamentos;
 use App\Models\Equipos;
 use App\Models\ObjetoEspecifico;
+use App\Models\Proveedor;
 use App\Models\Rubro;
 use App\Models\UnidadMedida;
 use Database\Seeders\EquiposSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class ConfiguracionController extends Controller
 {
 
     public function indexUnidadMedida(){
-        return view('backend.admin.unidadmedida.vistaunidadmedida');
+        return view('backend.admin.configuracion.unidadmedida.vistaunidadmedida');
     }
 
     public function tablaUnidadMedida(){
 
         $lista = UnidadMedida::orderBy('nombre', 'ASC')->get();
-        return view('backend.admin.unidadmedida.tablaunidadmedida', compact('lista'));
+        return view('backend.admin.configuracion.unidadmedida.tablaunidadmedida', compact('lista'));
     }
 
     public function nuevaUnidadMedida(Request $request){
@@ -371,6 +374,91 @@ class ConfiguracionController extends Controller
     }
 
 
+
+
+
+    //******************** PROVEEDOR *************************************************************
+
+
+    public function vistaProveedor()
+    {
+        return view('backend.admin.configuracion.proveedor.vistaproveedor');
+    }
+
+    public function tablaProveedor()
+    {
+        $lista = Proveedor::orderBy('nombre', 'ASC')->get();
+
+        return view('backend.admin.configuracion.proveedor.tablaproveedor', compact('lista'));
+    }
+
+
+    public function nuevoProveedor(Request $request)
+    {
+        $regla = array(
+            'nombre' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()) {
+            return ['success' => 0];
+        }
+        DB::beginTransaction();
+
+        try {
+            $dato = new Proveedor();
+            $dato->nombre = $request->nombre;
+            $dato->telefono = $request->telefono;
+            $dato->save();
+
+            DB::commit();
+            return ['success' => 1];
+        } catch (\Throwable $e) {
+            Log::info('error ' . $e);
+            DB::rollback();
+            return ['success' => 99];
+        }
+    }
+
+
+    public function infoProveedor(Request $request)
+    {
+        $regla = array(
+            'id' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()) {
+            return ['success' => 0];
+        }
+
+        $info = Proveedor::where('id', $request->id)->first();
+
+        return ['success' => 1, 'info' => $info];
+    }
+
+    public function actualizarProveedor(Request $request)
+    {
+        $regla = array(
+            'id' => 'required',
+            'nombre' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()) {
+            return ['success' => 0];
+        }
+
+        Proveedor::where('id', $request->id)->update([
+            'nombre' => $request->nombre,
+            'telefono' => $request->telefono
+        ]);
+
+        return ['success' => 1];
+    }
 
 
 

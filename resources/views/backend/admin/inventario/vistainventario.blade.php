@@ -41,6 +41,60 @@
     </li>
 @endsection
 
+@section('css')
+    <style>
+        /* ══ Fix Select2 + modal (z-index, tamaño y búsqueda) ══════════════════ */
+        .select2-container--open,
+        .select2-dropdown,
+        .select2-dropdown--below,
+        .select2-dropdown--above { z-index: 99999 !important; }
+        .select2-dropdown { box-sizing: border-box !important; }
+
+        .modal .select2-container--bootstrap-5 .select2-selection { min-height: 38px !important; }
+        .modal .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding: 0 !important; line-height: 1.5 !important; color: #212529 !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 36px !important; top: 1px !important; right: 6px !important;
+        }
+
+        .select2-search--dropdown { padding: 8px !important; }
+        .select2-search--dropdown .select2-search__field {
+            width: 100% !important;
+            padding: 6px 10px !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 4px !important;
+            font-size: 13px !important;
+            box-sizing: border-box !important;
+            pointer-events: auto !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+            outline: none !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option {
+            font-size: 13px !important; padding: 6px 12px !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #3b82f6 !important; color: #fff !important;
+        }
+    </style>
+@stop
+
 @section('content')
 
     <div id="divcontenedor">
@@ -75,7 +129,6 @@
                         <div class="row">
                             <div class="col-md-12">
                                 <div id="tablaDatatable">
-                                    {{-- Loading inicial --}}
                                     <div id="loading-inventario" class="text-center py-5">
                                         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                                             <span class="sr-only">Cargando...</span>
@@ -113,11 +166,10 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label>Marca Material: (Opcional)</label>
+                                    <label>Marca Material: <small class="text-muted">(Opcional)</small></label>
                                     <input type="text" class="form-control" autocomplete="off"
                                            maxlength="100" id="codigo-nuevo" placeholder="Puede ser Modelo del Material">
                                 </div>
-
 
                                 <div class="row">
                                     <div class="col-md-6">
@@ -185,7 +237,7 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label>Marca Material: (Opcional)</label>
+                                            <label>Marca Material: <small class="text-muted">(Opcional)</small></label>
                                             <input type="text" class="form-control" autocomplete="off"
                                                    maxlength="100" id="codigo-editar" placeholder="Puede ser Modelo del Material">
                                         </div>
@@ -200,7 +252,7 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group">
-                                                    <label>Código Presupuestario: <small class="text-muted">(opcional)</small></label>
+                                                    <label>Código Presupuestario: <small class="text-muted">(Opcional)</small></label>
                                                     <select class="form-control" id="select-objeto-editar" style="width:100%">
                                                     </select>
                                                 </div>
@@ -278,7 +330,28 @@
         var filtroActual = 'todos';
         var rutaTabla    = "{{ url('/admin/inventario/tabla/index') }}";
 
-        // ── DataTable ─────────────────────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        // FIX DEFINITIVO: desactivar _enforceFocus de Bootstrap para que
+        // Select2 no pierda el foco en su campo de búsqueda con zoom > 100%
+        // ══════════════════════════════════════════════════════════════════════
+        if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
+            var __modalProto = $.fn.modal.Constructor.prototype;
+            if (__modalProto._enforceFocus) { __modalProto._enforceFocus = function () {}; }
+            if (__modalProto.enforceFocus)  { __modalProto.enforceFocus  = function () {}; }
+            if (__modalProto._focustrap)    { __modalProto._focustrap = { activate: function(){}, deactivate: function(){} }; }
+        }
+
+        // ── Helper: inicializar un Select2 con body como padre ───────────────
+        function initSelect2(id) {
+            $('#' + id).select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('body'),
+                language: { noResults: function () { return 'No encontrado'; } },
+                width: '100%'
+            });
+        }
+
+        // ── DataTable ─────────────────────────────────────────────────────────
         function initDataTable() {
             if ($.fn.DataTable.isDataTable('#tabla')) {
                 $('#tabla').DataTable().destroy();
@@ -292,29 +365,29 @@
                 info: true,
                 autoWidth: false,
                 responsive: true,
-                pagingType: "full_numbers",
-                lengthMenu: [[100, 150, -1], [100, 150, "Todo"]],
+                pagingType: 'full_numbers',
+                lengthMenu: [[100, 150, -1], [100, 150, 'Todo']],
                 language: {
-                    sProcessing:   "Procesando...",
-                    sLengthMenu:   "Mostrar _MENU_ registros",
-                    sZeroRecords:  "No se encontraron resultados",
-                    sEmptyTable:   "Ningún dato disponible en esta tabla",
-                    sInfo:         "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                    sInfoEmpty:    "Mostrando 0 a 0 de 0 registros",
-                    sInfoFiltered: "(filtrado de _MAX_ registros)",
-                    sSearch:       "Buscar:",
+                    sProcessing:   'Procesando...',
+                    sLengthMenu:   'Mostrar _MENU_ registros',
+                    sZeroRecords:  'No se encontraron resultados',
+                    sEmptyTable:   'Ningún dato disponible en esta tabla',
+                    sInfo:         'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                    sInfoEmpty:    'Mostrando 0 a 0 de 0 registros',
+                    sInfoFiltered: '(filtrado de _MAX_ registros)',
+                    sSearch:       'Buscar:',
                     oPaginate: {
-                        sFirst: "Primero", sLast: "Último",
-                        sNext: "Siguiente", sPrevious: "Anterior"
+                        sFirst: 'Primero', sLast: 'Último',
+                        sNext: 'Siguiente', sPrevious: 'Anterior'
                     },
                     oAria: {
-                        sSortAscending: ": Orden ascendente",
-                        sSortDescending: ": Orden descendente"
+                        sSortAscending: ': Orden ascendente',
+                        sSortDescending: ': Orden descendente'
                     }
                 },
                 dom:
                     "<'row align-items-center'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-md-right'f>>" +
-                    "tr" +
+                    'tr' +
                     "<'row align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
             });
 
@@ -322,36 +395,22 @@
             $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
         }
 
-        // ── Inicializar Select2 ───────────────────────────────────────
-        function initSelect2() {
-            $('#select-unidad-nuevo').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalAgregar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-objeto-nuevo').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalAgregar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-unidad-editar').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-objeto-editar').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-        }
-
-        // ── Carga inicial ─────────────────────────────────────────────
+        // ── Carga inicial ─────────────────────────────────────────────────────
         $(function () {
-            initSelect2();
+            [
+                'select-unidad-nuevo', 'select-objeto-nuevo',
+                'select-unidad-editar', 'select-objeto-editar'
+            ].forEach(initSelect2);
+
+            $(document).on('select2:open', function () {
+                var field = document.querySelector('.select2-container--open .select2-search__field');
+                if (field) field.focus();
+            });
+
             cargarTabla('todos');
         });
 
+        // ── Cargar tabla ──────────────────────────────────────────────────────
         function cargarTabla(filtro) {
             var url = rutaTabla + '?filtro=' + filtro;
 
@@ -359,15 +418,14 @@
                 $('#tabla').DataTable().destroy();
             }
 
-            // Mostrar loading antes de la petición
             $('#tablaDatatable').html(`
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                <span class="sr-only">Cargando...</span>
-            </div>
-            <p class="mt-3 text-muted">Cargando listado de materiales...</p>
-        </div>
-    `);
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Cargando listado de materiales...</p>
+                </div>
+            `);
 
             $('#tablaDatatable').load(url, function () {
                 initDataTable();
@@ -376,7 +434,7 @@
 
         window.recargar = function () { cargarTabla(filtroActual); };
 
-        // ── Filtros ───────────────────────────────────────────────────
+        // ── Filtros ───────────────────────────────────────────────────────────
         function filtrarTabla(filtro) {
             filtroActual = filtro;
 
@@ -391,16 +449,17 @@
             cargarTabla(filtro);
         }
 
-        // ── Modal Agregar ─────────────────────────────────────────────
+        // ── Modal Agregar ─────────────────────────────────────────────────────
         function modalAgregar() {
-            document.getElementById("formulario-nuevo").reset();
+            document.getElementById('formulario-nuevo').reset();
             document.getElementById('res-caracter-nuevo').innerHTML = '0/300';
-            $('#select-unidad-nuevo').val('').trigger('change');
-            $('#select-objeto-nuevo').val('').trigger('change');
+            ['select-unidad-nuevo', 'select-objeto-nuevo'].forEach(function (id) {
+                $('#' + id).val('').trigger('change');
+            });
             $('#modalAgregar').modal({ backdrop: 'static', keyboard: false });
         }
 
-        // ── Nuevo ─────────────────────────────────────────────────────
+        // ── Nuevo ─────────────────────────────────────────────────────────────
         function nuevo() {
             var nombre           = $('#nombre-nuevo').val().trim();
             var codigo           = $('#codigo-nuevo').val().trim();
@@ -432,38 +491,39 @@
                 .catch(() => { closeLoading(); toastr.error('Error al registrar'); });
         }
 
-        // ── Informacion ───────────────────────────────────────────────
+        // ── Informacion ───────────────────────────────────────────────────────
         function informacion(id) {
             openLoading();
-            document.getElementById("formulario-editar").reset();
+            document.getElementById('formulario-editar').reset();
             document.getElementById('res-caracter-editar').innerHTML = '0/300';
 
             axios.post(urlAdmin + '/admin/inventario/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
+                        var d = response.data;
 
                         $('#id-editar').val(id);
-                        $('#nombre-editar').val(response.data.material.nombre);
-                        $('#codigo-editar').val(response.data.material.codigo);
+                        $('#nombre-editar').val(d.material.nombre);
+                        $('#codigo-editar').val(d.material.codigo);
                         contarcaracteresEditar();
 
-                        // ── Unidad de medida ──
+                        // ── Unidad de medida ──────────────────────────────────
                         $('#select-unidad-editar').empty().append('<option value="">Seleccione una opción...</option>');
-                        $.each(response.data.unidad, function (key, val) {
-                            var sel = response.data.material.id_medida == val.id ? ' selected' : '';
+                        $.each(d.unidad, function (key, val) {
+                            var sel = d.material.id_medida == val.id ? ' selected' : '';
                             $('#select-unidad-editar').append(
                                 '<option value="' + val.id + '"' + sel + '>' + val.nombre + '</option>'
                             );
                         });
                         $('#select-unidad-editar').trigger('change');
 
-                        // ── Objeto Específico ──
+                        // ── Objeto Específico ─────────────────────────────────
                         $('#select-objeto-editar').empty().append('<option value="">— Sin asignar —</option>');
-                        $.each(response.data.objeto_especifico, function (key, val) {
+                        $.each(d.objeto_especifico, function (key, val) {
                             var label = val.codigo + ' — ' + val.nombre;
                             if (val.cuenta) { label += ' (' + val.cuenta.nombre + ')'; }
-                            var sel = response.data.material.id_objespecifico == val.id ? ' selected' : '';
+                            var sel = d.material.id_objespecifico == val.id ? ' selected' : '';
                             $('#select-objeto-editar').append(
                                 '<option value="' + val.id + '"' + sel + '>' + label + '</option>'
                             );
@@ -479,7 +539,7 @@
                 .catch(() => { closeLoading(); toastr.error('Información no encontrada'); });
         }
 
-        // ── Editar ────────────────────────────────────────────────────
+        // ── Editar ────────────────────────────────────────────────────────────
         function editar() {
             var id               = $('#id-editar').val();
             var nombre           = $('#nombre-editar').val().trim();
@@ -513,7 +573,7 @@
                 .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
         }
 
-        // ── Contadores de caracteres ──────────────────────────────────
+        // ── Contadores de caracteres ──────────────────────────────────────────
         function contarcaracteresIngreso() {
             setTimeout(function () {
                 var cantidad = document.getElementById('nombre-nuevo').value.length;
@@ -528,7 +588,7 @@
             }, 10);
         }
 
-        // ── Ver proyectos ─────────────────────────────────────────────
+        // ── Ver inventario ────────────────────────────────────────────────────
         function verInventario(id, nombre) {
             $('#proyectos-material').text(nombre);
             $('#proyectos-tbody').html('');
@@ -545,23 +605,22 @@
                     if (response.data.success === 1) {
                         var t = response.data.totales;
 
-                        // Si todo está en 0, mostrar vacío
                         if (t.entradas === 0 && t.salidas === 0) {
                             $('#proyectos-vacio').show();
                             return;
                         }
 
                         $('#proyectos-tbody').html(`
-                    <tr>
-                        <td class="text-center">${t.entradas}</td>
-                        <td class="text-center">${t.salidas}</td>
-                        <td class="text-center">
-                            <strong class="${t.disponible > 0 ? 'text-success' : 'text-danger'}">
-                                ${t.disponible}
-                            </strong>
-                        </td>
-                    </tr>
-                `);
+                            <tr>
+                                <td class="text-center">${t.entradas}</td>
+                                <td class="text-center">${t.salidas}</td>
+                                <td class="text-center">
+                                    <strong class="${t.disponible > 0 ? 'text-success' : 'text-danger'}">
+                                        ${t.disponible}
+                                    </strong>
+                                </td>
+                            </tr>
+                        `);
 
                         $('#proyectos-contenido').show();
                     } else {

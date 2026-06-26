@@ -406,6 +406,12 @@ return [
                     'route' => 'admin.objetoespecifico.index',
                 ],
 
+                [
+                    'text' => 'Proveedores',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.proveedor.index',
+                ],
+
             ],
         ],
 

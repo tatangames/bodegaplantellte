@@ -8,6 +8,7 @@ use App\Models\EntradasDetalle;
 use App\Models\Equipos;
 use App\Models\InformacionGeneral;
 use App\Models\Materiales;
+use App\Models\Proveedor;
 use App\Models\Reserva;
 use App\Models\Salidas;
 use App\Models\SalidasDetalle;
@@ -29,14 +30,15 @@ class HistorialController extends Controller
     {
         $arrayTipoEntrada = TipoEntrada::orderBy('nombre')->get();
         $arrayTipoCompra  = TipoCompra::orderBy('nombre')->get();
+        $arrayProveedor   = Proveedor::orderBy('nombre')->get();
 
         return view('backend.admin.historial.entradas.vistahistorialentradas',
-            compact('arrayTipoEntrada', 'arrayTipoCompra'));
+            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor'));
     }
 
     public function tablaHistorialEntradas(Request $request)
     {
-        $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra'])
+        $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor'])
             ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde)
             )
             ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta)
@@ -71,6 +73,7 @@ class HistorialController extends Controller
                 'descripcion'   => $entrada->descripcion,
                 'id_tipoentrada'=> $entrada->id_tipoentrada,
                 'id_tipocompra' => $entrada->id_tipocompra,
+                'id_proveedor'  => $entrada->id_proveedor,
             ]
         ]);
     }
@@ -89,6 +92,7 @@ class HistorialController extends Controller
         $entrada->descripcion    = $request->descripcion    ?: null;
         $entrada->id_tipoentrada = $request->id_tipoentrada;
         $entrada->id_tipocompra  = $request->id_tipocompra;
+        $entrada->id_proveedor   = $request->id_proveedor   ?: null;
         $entrada->save();
 
         return response()->json(['success' => 1]);
