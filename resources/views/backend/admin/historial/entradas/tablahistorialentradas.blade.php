@@ -7,7 +7,6 @@
                         <table id="tabla" class="table table-bordered table-striped">
                             <thead>
                             <tr>
-                                <th style="width:4%">ID</th>
                                 <th style="width:12%">Tipo Entrada</th>
                                 <th style="width:12%">Tipo Compra</th>
                                 <th style="width:8%">Fecha</th>
@@ -21,7 +20,6 @@
                             <tbody>
                             @foreach($arrayEntradas as $dato)
                                 <tr>
-                                    <td>{{ $dato->id }}</td>
                                     <td>{{ $dato->tipoEntrada->nombre ?? '' }}</td>
                                     <td>{{ $dato->tipoCompra->nombre ?? '' }}</td>
                                     <td>{{ $dato->fecha_fmt }}</td>
