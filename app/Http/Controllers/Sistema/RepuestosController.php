@@ -198,7 +198,6 @@ class RepuestosController extends Controller
     public function guardarEntrada(Request $request)
     {
 
-        Log::info($request->all());
         $validator = Validator::make($request->all(), [
             'fecha'        => 'required|date',
             'tipoentrada'  => 'required',
