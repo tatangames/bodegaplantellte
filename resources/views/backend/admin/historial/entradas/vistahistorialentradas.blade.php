@@ -131,7 +131,15 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div id="tablaDatatable"></div>
+                                <div id="tablaDatatable">
+                                    {{-- Aviso inicial --}}
+                                    <div class="text-center text-muted py-5" id="aviso-inicial">
+                                        <i class="fas fa-filter fa-3x mb-3" style="color:#cbd5e1"></i>
+                                        <p class="mb-0" style="font-size:15px">
+                                            Selecciona un rango de fechas y presiona <strong>Filtrar</strong> para ver las entradas.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -311,6 +319,14 @@
         var _entradaIdActual     = null;
         var _entradaTituloActual = '';
 
+        const avisoHtml = `
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-filter fa-3x mb-3" style="color:#cbd5e1"></i>
+                <p class="mb-0" style="font-size:15px">
+                    Selecciona un rango de fechas y presiona <strong>Filtrar</strong> para ver las entradas.
+                </p>
+            </div>`;
+
         // ══ Fix Bootstrap _enforceFocus (Select2 zoom) ════════════════
         if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
             var __modalProto = $.fn.modal.Constructor.prototype;
@@ -327,6 +343,8 @@
                 if ($.fn.DataTable.isDataTable('#tabla')) {
                     $('#tabla').DataTable().destroy();
                 }
+                if ($('#tabla').length === 0) return;
+
                 $('#tabla').DataTable({
                     paging: true,
                     lengthChange: true,
@@ -369,7 +387,7 @@
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
 
-                const url = params.toString() ? ruta + '?' + params.toString() : ruta;
+                const url = ruta + (params.toString() ? '?' + params.toString() : '');
                 $('#tablaDatatable').load(url, function () { initDataTable(); });
             }
 
@@ -381,7 +399,8 @@
                 cargarTabla();
             };
 
-            cargarTabla();
+            // ── Carga inicial: solo mostrar aviso ─────────────────
+            $('#tablaDatatable').html(avisoHtml);
 
             // ── Select2 modales con body como padre (fix zoom) ────
             ['select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar'].forEach(function (id) {
@@ -433,7 +452,6 @@
                         $('#descripcion-editar').val(e.descripcion ?? '');
                         $('#select-tipoentrada-editar').val(e.id_tipoentrada).trigger('change');
                         $('#select-tipocompra-editar').val(e.id_tipocompra).trigger('change');
-                        // Proveedor: si es null queda en '' (Sin asignar)
                         $('#select-proveedor-editar').val(e.id_proveedor ?? '').trigger('change');
                         $('#modalEditar').modal('show');
                     } else {
@@ -462,7 +480,7 @@
             formData.append('fecha',          fecha);
             formData.append('id_tipoentrada', tipoentrada);
             formData.append('id_tipocompra',  tipocompra);
-            formData.append('id_proveedor',   proveedor);   // opcional, puede ser ''
+            formData.append('id_proveedor',   proveedor);
             formData.append('factura',        factura);
             formData.append('descripcion',    descripcion);
 

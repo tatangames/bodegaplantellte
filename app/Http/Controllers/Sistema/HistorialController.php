@@ -41,7 +41,6 @@ class HistorialController extends Controller
         $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor', 'detalle'])
             ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde))
             ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta))
-            ->when($request->tipoentrada, fn($q) => $q->where('id_tipoentrada', $request->tipoentrada))
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
@@ -243,12 +242,7 @@ class HistorialController extends Controller
 
     public function vistaExtrasEntrada($id)
     {
-        $entrada = Entradas::with('tipoproyecto')->find($id);
-
-        if (!$entrada || $entrada->tipoproyecto->transferido == 1) {
-            return redirect()->route('admin.historial.entradas.index')
-                ->with('error', 'El proyecto está cerrado, no se pueden agregar extras');
-        }
+        $entrada = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor'])->find($id);
 
         return view('backend.admin.historial.entradas.vistaextras', compact('entrada'));
     }
@@ -261,11 +255,6 @@ class HistorialController extends Controller
             return response()->json(['success' => 0]);
         }
 
-        // Verificar que el proyecto no esté cerrado
-        if ($entrada->tipoproyecto->transferido == 1) {
-            return response()->json(['success' => 1, 'mensaje' => 'El proyecto está cerrado']);
-        }
-
         $contenedor = json_decode($request->contenedorArray, true);
 
         if (empty($contenedor)) {
@@ -274,15 +263,15 @@ class HistorialController extends Controller
 
         foreach ($contenedor as $item) {
             EntradasDetalle::create([
-                'id_entradas' => $entrada->id,
-                'id_material' => $item['idMaterial'],
+                'id_entradas'      => $entrada->id,
+                'id_material'      => $item['idMaterial'],
                 'cantidad_inicial' => $item['infoCantidad'],
-                'codigo' => $item['infoCodigo'] ?: null,
-                'precio' => $item['infoPrecio'],
+                'codigo'           => $item['infoCodigo'] ?: null,
+                'precio'           => $item['infoPrecio'],
             ]);
         }
 
-        return response()->json(['success' => 2]);
+        return response()->json(['success' => 1]);
     }
 
     //***** ========================================================================================= **********
