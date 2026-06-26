@@ -28,7 +28,7 @@
                                     <td>{{ $dato->factura ?? '' }}</td>
                                     <td>{{ $dato->proveedor->nombre ?? '' }}</td>
                                     <td class="text-right font-weight-bold text-success">
-                                        ${{ number_format($dato->totalEntrada, 2) }}
+                                        ${{ number_format($dato->totalEntrada, 4) }}
                                     </td>
                                     <td>{{ $dato->descripcion ?? '' }}</td>
                                     <td class="text-center">
