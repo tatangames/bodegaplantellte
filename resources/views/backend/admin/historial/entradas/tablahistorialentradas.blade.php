@@ -8,12 +8,13 @@
                             <thead>
                             <tr>
                                 <th style="width:4%">ID</th>
-                                <th style="width:14%">Tipo Entrada</th>
-                                <th style="width:14%">Tipo Compra</th>
-                                <th style="width:10%">Fecha</th>
-                                <th style="width:10%">Factura</th>
+                                <th style="width:12%">Tipo Entrada</th>
+                                <th style="width:12%">Tipo Compra</th>
+                                <th style="width:8%">Fecha</th>
+                                <th style="width:8%">Factura</th>
                                 <th style="width:10%">Proveedor</th>
-                                <th style="width:22%">Descripción</th>
+                                <th style="width:10%">Total</th>
+                                <th style="width:20%">Descripción</th>
                                 <th style="width:16%">Opciones</th>
                             </tr>
                             </thead>
@@ -26,6 +27,9 @@
                                     <td>{{ $dato->fecha_fmt }}</td>
                                     <td>{{ $dato->factura ?? '' }}</td>
                                     <td>{{ $dato->proveedor->nombre ?? '' }}</td>
+                                    <td class="text-right font-weight-bold text-success">
+                                        ${{ number_format($dato->totalEntrada, 2) }}
+                                    </td>
                                     <td>{{ $dato->descripcion ?? '' }}</td>
                                     <td class="text-center">
                                         <button type="button"

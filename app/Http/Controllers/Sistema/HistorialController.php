@@ -38,17 +38,15 @@ class HistorialController extends Controller
 
     public function tablaHistorialEntradas(Request $request)
     {
-        $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor'])
-            ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde)
-            )
-            ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta)
-            )
-            ->when($request->tipoentrada, fn($q) => $q->where('id_tipoentrada', $request->tipoentrada)
-            )
+        $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor', 'detalle'])
+            ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde))
+            ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta))
+            ->when($request->tipoentrada, fn($q) => $q->where('id_tipoentrada', $request->tipoentrada))
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
-                $item->fecha_fmt = date('d/m/Y', strtotime($item->fecha));
+                $item->fecha_fmt    = date('d/m/Y', strtotime($item->fecha));
+                $item->totalEntrada = $item->detalle->sum(fn($d) => $d->cantidad_inicial * $d->precio);
                 return $item;
             });
 
