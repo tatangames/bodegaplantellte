@@ -152,7 +152,7 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/informacion/actualizar/px', [ReportesController::class, 'actualizarPxInformacionGeneral'])
         ->name('admin.informacion.actualizar.px');
 
-
+    
 
 
 
