@@ -143,7 +143,7 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/salidas/detalle/eliminar', [HistorialController::class, 'eliminarDetalleSalida']);
 
     // --- REPORTE / ENTRADA POR PROYECTO
-    Route::get('/admin/reporte/inventario/quehaentrado', [ReportesController::class,'vistaQueHaEntrado'])->name('admin.reporte.inventario.entrada.index');
+    Route::get('/admin/reporte/inventario/generales', [ReportesController::class,'vistaReporteGenerales'])->name('admin.reporte.inventario.entrada.index');
     Route::get('/admin/reporte/quehaentrado/pdf/{desde}/{hasta}/{tipo}', [ReportesController::class, 'pdfQueHaEntradoProyectos']);
     Route::get('/admin/reporte/quehasalido/pdf/{desde}/{hasta}/{tipo}', [ReportesController::class, 'pdfQueHaSalidoProyectos']);
     Route::get('admin/reporte/inventario/pdf/{idMaterial}', [ReportesController::class, 'pdfInventarioActual'])->name('admin.reporte.inventario.pdf');
@@ -152,7 +152,9 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/informacion/actualizar/px', [ReportesController::class, 'actualizarPxInformacionGeneral'])
         ->name('admin.informacion.actualizar.px');
 
-    
+    Route::get('/admin/bodega/reportespdf/inicial/final/{desde}/{hasta}', [ReportesController::class, 'reportePDFInicialPorPeriodos']);
+    Route::post('/admin/actualizarinfo/general', [ReportesController::class, 'actualizarNombreReporte']);
+
 
 
 

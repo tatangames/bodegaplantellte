@@ -160,7 +160,7 @@
 
 
                 {{-- ══ INVENTARIO ACTUAL ══ --}}
-                <div class="col-md-12">
+                <div class="col-md-6">
                     <div class="reporte-card">
                         <div class="reporte-header" style="background: linear-gradient(135deg, #1a4a6b, #1a73e8);">
                             <i class="fas fa-boxes"></i>
@@ -195,6 +195,68 @@
                     </div>
                 </div>
 
+                {{-- ══ ENTRADAS / SALIDAS POR PERÍODO ══ --}}
+                <div class="col-md-6">
+                    <div class="reporte-card">
+                        <div class="reporte-header" style="background: linear-gradient(135deg, #6b4a1a, #e88e1a);">
+                            <i class="fas fa-exchange-alt"></i>
+                            <h5>Control de Entradas/Salidas por Período</h5>
+                        </div>
+                        <div class="reporte-body">
+                            <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                <span style="color: red; font-size: 16px">
+Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el siguiente mes ya no aparecerá si ya no tiene unidades.
+                                </span>
+                            </p>
+                            <hr class="divider">
+
+                            <div class="fecha-row">
+                                <div class="fecha-box">
+                                    <label>Fecha desde <span class="text-danger">*</span></label>
+                                    <input type="date" id="periodo-fecha-desde" class="form-control form-control-sm">
+                                </div>
+                                <div class="fecha-box">
+                                    <label>Fecha hasta <span class="text-danger">*</span></label>
+                                    <input type="date" id="periodo-fecha-hasta" class="form-control form-control-sm">
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="generarPdfPeriodo()" class="btn-pdf"
+                                    style="background: linear-gradient(135deg, #6b4a1a, #e88e1a); color:#fff;
+                               box-shadow: 0 4px 14px rgba(232,142,26,.35); margin-top:0;">
+                                <i class="fas fa-file-pdf"></i> Generar PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <hr>
+
+                {{-- ══ ENTRADAS / SALIDAS POR PERÍODO ══ --}}
+                <div class="col-md-4">
+                    <div class="reporte-card">
+                        <div class="reporte-header" style="background: linear-gradient(135deg, #6b4a1a, #e88e1a);">
+                            <i class="fas fa-exchange-alt"></i>
+                            <h5>Nombre para Firma en Reporte</h5>
+                        </div>
+                        <div class="reporte-body">
+
+                            <div class="fecha-row">
+                                <div class="fecha-box">
+                                    <label>Nombre</label>
+                                    <input type="text" id="nombre-firma" maxlength="100" class="form-control form-control-sm" value="{{ $informacionGeneral->nombre_reporte }}">
+                                </div>
+
+                            </div>
+
+                            <button type="button" class="btn btn-primary" onclick="guardarNombreReporte()">
+                                <i class="fas fa-save mr-1"></i>Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
 
             </div>
@@ -237,5 +299,55 @@
                 }
             },
         });
+
+
+        // ── Reporte de Entradas/Salidas por Período ────────────────────
+        function generarPdfPeriodo() {
+            var desde = document.getElementById('periodo-fecha-desde').value;
+            var hasta = document.getElementById('periodo-fecha-hasta').value;
+
+            if (!desde || !hasta) {
+                toastr.error('Debes seleccionar fecha desde y fecha hasta');
+                return;
+            }
+
+            if (desde > hasta) {
+                toastr.error('La fecha "desde" no puede ser mayor que "hasta"');
+                return;
+            }
+
+            var url = "{{ url('admin/bodega/reportespdf/inicial/final') }}/" + desde + '/' + hasta;
+            window.open(url, '_blank');
+        }
+
+
+        function guardarNombreReporte(){
+
+            var nombre = document.getElementById('nombre-firma').value;
+
+            openLoading();
+            var formData = new FormData();
+            formData.append('nombre', nombre);
+
+            axios.post(urlAdmin+'/admin/actualizarinfo/general', formData, {
+            })
+                .then((response) => {
+                    closeLoading();
+
+                    if(response.data.success === 1){
+                        toastr.success('Actualizado correctamente');
+                    }
+                    else {
+                        toastr.error('Error al actualizar');
+                    }
+                })
+                .catch((error) => {
+                    toastr.error('Error al actualizar');
+                    closeLoading();
+                });
+
+        }
+
+
     </script>
 @endsection
