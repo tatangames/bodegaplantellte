@@ -799,6 +799,7 @@ class ReportesController extends Controller
 
             $info->nombre_reporte = $request->nombre_reporte;
             $info->salto_pagina   = (int) $request->salto_pagina;
+            $info->px_firmas     = (int) $request->px_firmas;
 
             $info->save();
 

@@ -258,6 +258,16 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                 </div>
                             </div>
 
+                            <div class="fecha-row">
+                                <div class="fecha-box">
+                                    <label for="nombre-firma">Distancia para Firma</label>
+                                    <input type="number"
+                                           id="px_firmas"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->px_firmas }}">
+                                </div>
+                            </div>
+
                             <!-- Salto de página -->
                             <div class="mt-3">
                                 <div class="custom-control custom-switch">
@@ -354,6 +364,7 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
         function guardarNombreReporte(){
             var nombreFirma = $('#nombre-firma').val().trim();
             var saltoPagina = $('#config-salto-pagina').is(':checked') ? 1 : 0;
+            const px_firmas = $('#px_firmas').val().trim();
 
             if (nombreFirma === '') {
                 toastr.error('Debe ingresar un nombre');
@@ -364,6 +375,7 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                 _token: '{{ csrf_token() }}',
                 nombre_reporte: nombreFirma,
                 salto_pagina: saltoPagina,
+                px_firmas: px_firmas,
             })
                 .then(function (response) {
 
