@@ -153,7 +153,6 @@ Route::middleware('auth:admin')->group(function () {
         ->name('admin.informacion.actualizar.px');
 
     Route::get('/admin/bodega/reportespdf/inicial/final/{desde}/{hasta}', [ReportesController::class, 'reportePDFInicialPorPeriodos']);
-    Route::post('/admin/actualizarinfo/general', [ReportesController::class, 'actualizarNombreReporte']);
 
 
 
