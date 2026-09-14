@@ -1687,15 +1687,21 @@ class ReportesController extends Controller
                 <tr>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte</span><br>
+                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
+                            $informacionGeneral->nombre_reporte
+                        </span><br>
                     </td>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte2</span><br>
+                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
+                            $informacionGeneral->nombre_reporte2
+                        </span><br>
                     </td>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte3</span><br>
+                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
+                            $informacionGeneral->nombre_reporte3
+                        </span><br>
                     </td>
                 </tr>
             </table>
