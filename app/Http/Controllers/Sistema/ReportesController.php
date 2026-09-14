@@ -1204,16 +1204,6 @@ class ReportesController extends Controller
     }
 
 
-    public function actualizarNombreReporte(Request $request)
-    {
-        InformacionGeneral::where('id', 1)->update([
-            'nombre_reporte' => $request->nombre
-        ]);
-
-
-        return ['success' => 1];
-    }
-
 
 
 
@@ -1693,19 +1683,19 @@ class ReportesController extends Controller
 
         $html .= "
         <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
-            <table width='100%' style='font-size:13px; text-align:center;'>
+            <table width='100%' style='font-size:12px; text-align:center;'>
                 <tr>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:14px;'>$informacionGeneral->nombre_reporte</span><br>
+                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte</span><br>
                     </td>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:14px;'>$informacionGeneral->nombre_reporte2</span><br>
+                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte2</span><br>
                     </td>
                     <td style='width:33%; text-align:center;'>
                         F._____________________________<br>
-                        <span style='font-weight:bold; font-size:14px;'>$informacionGeneral->nombre_reporte3</span><br>
+                        <span style='font-weight:bold; font-size:11px;'>$informacionGeneral->nombre_reporte3</span><br>
                     </td>
                 </tr>
             </table>
