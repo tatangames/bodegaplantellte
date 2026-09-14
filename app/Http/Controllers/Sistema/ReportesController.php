@@ -816,158 +816,6 @@ class ReportesController extends Controller
         }
     }
 
-
-
-
-
-    public function pdfReporteSalidaTalonario(Request $request)
-    {
-        $fecha          = $request->input('fecha', '');
-        $idEquipo       = $request->input('equipo', '');
-        $descripcion    = $request->input('descripcion', '');
-        $nTalonario     = $request->input('ficha_talonario', '');
-        $nombreRecibe   = $request->input('ficha_nombre', '');
-        $contenedorJson = $request->input('contenedorArray', '[]');
-        $contenedor     = json_decode($contenedorJson, true) ?? [];
-
-        $infoEquipo = \App\Models\Equipos::find($idEquipo);
-        $fechaFmt   = $fecha ? date('d/m/Y', strtotime($fecha)) : '';
-        $logoalcaldia = 'images/logo.png';
-
-        $html = "
-<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
-    <tr>
-        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
-            <table width='100%'>
-                <tr>
-                    <td style='width:30%; text-align:left;'>
-                        <img src='{$logoalcaldia}' style='height:38px'>
-                    </td>
-                    <td style='width:70%; text-align:left; color:#104e8c; font-size:13px; font-weight:bold; line-height:1.3;'>
-                        SANTA ANA NORTE<br>EL SALVADOR
-                    </td>
-                </tr>
-            </table>
-        </td>
-        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
-                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
-            FORMULARIO DE SALIDA DE BODEGA
-        </td>
-        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
-            <table width='100%' style='font-size:10px;'>
-                <tr>
-                    <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
-                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
-                </tr>
-                <tr>
-                    <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
-                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
-                </tr>
-                <tr>
-                    <td style='border-right:0.8px solid #000; padding:4px 6px;'><strong>Fecha de vigencia:</strong></td>
-                    <td style='padding:4px 6px; text-align:center;'></td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-</table>
-
-<br>
-
-<table width='100%' style='font-family:Arial, sans-serif; font-size:12px; border-collapse:collapse;'>
-    <tr>
-        <td width='35%'><strong>FECHA:</strong> &nbsp; {$fechaFmt}</td>
-        <td width='35%'><strong>EQUIPO:</strong> &nbsp; " . e($infoEquipo->nombre ?? '') . "</td>
-        <td width='30%' style='text-align:center;'><strong>N.</strong> &nbsp; " . e($nTalonario) . "</td>
-    </tr>
-    <tr>
-        <td colspan='3' style='padding-top:6px;'>
-            <strong>NOMBRE:</strong> &nbsp; " . e($nombreRecibe) . "
-        </td>
-    </tr>";
-
-        if ($descripcion) {
-            $html .= "
-    <tr>
-        <td colspan='3' style='padding-top:4px;'>
-            <strong>DESCRIPCIÓN:</strong> &nbsp; " . e($descripcion) . "
-        </td>
-    </tr>";
-        }
-
-        $html .= "
-</table>
-
-<br>
-
-<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;'>
-    <thead>
-        <tr>
-            <th style='width:20%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
-            <th style='width:80%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
-        </tr>
-    </thead>
-    <tbody>";
-
-        foreach ($contenedor as $item) {
-            $cantidad  = htmlspecialchars($item['infoCantidad']   ?? '');
-            $nombreMat = htmlspecialchars($item['nombreMaterial'] ?? '');
-
-            // Intentar obtener nombre desde BD si viene el id
-            if (!empty($item['infoIdEntradaDeta'])) {
-                $entDet = \App\Models\EntradasDetalle::with('material')
-                    ->find($item['infoIdEntradaDeta']);
-                if ($entDet && $entDet->material) {
-                    $nombreMat = htmlspecialchars($entDet->material->nombre);
-                }
-            }
-
-            $html .= "
-        <tr>
-            <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
-            <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
-        </tr>";
-        }
-
-        $html .= "
-    </tbody>
-</table>
-
-<br><br><br><br>
-
-<table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
-    <tr>
-        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
-        <td width='20%'></td>
-        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
-    </tr>
-    <tr>
-        <td width='40%' style='text-align:center;'><strong>RECIBE</strong></td>
-        <td width='20%'></td>
-        <td width='40%' style='text-align:center;'><strong>ENTREGA</strong></td>
-    </tr>
-</table>";
-
-        $mpdf = new \Mpdf\Mpdf([
-            'tempDir'       => sys_get_temp_dir(),
-            'format'        => 'LETTER',
-            'margin_top'    => 15,
-            'margin_bottom' => 15,
-            'margin_left'   => 15,
-            'margin_right'  => 15,
-        ]);
-
-        $mpdf->SetTitle('Formulario de Salida de Bodega');
-        $mpdf->showImageErrors = false;
-
-        $stylesheet = file_get_contents('css/cssregistro.css');
-        $mpdf->WriteHTML($stylesheet, 1);
-        $mpdf->WriteHTML($html, 2);
-        $mpdf->Output('salida_bodega_' . date('Ymd_His') . '.pdf', 'I');
-    }
-
-
-
     public function pdfInventarioActual($idMaterial = 0)
     {
         $fechaHoy     = Carbon::now('America/El_Salvador')->format('d-m-Y');
@@ -1202,9 +1050,6 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output('inventario_' . date('Ymd_His') . '.pdf', 'I');
     }
-
-
-
 
 
     public function reportePDFInicialPorPeriodos($desde, $hasta)
@@ -1707,6 +1552,206 @@ class ReportesController extends Controller
         $mpdf->setFooter('Página {PAGENO} de {nb}');
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
+    }
+
+
+
+
+
+
+    public function pdfReporteSalidaTalonario(Request $request)
+    {
+        $fecha          = $request->input('fecha', '');
+        $idEquipo       = $request->input('equipo', '');
+        $descripcion    = $request->input('descripcion', '');
+        $nTalonario     = $request->input('ficha_talonario', '');
+        $nombreRecibe   = $request->input('ficha_nombre', '');
+        $contenedorJson = $request->input('contenedorArray', '[]');
+        $contenedor     = json_decode($contenedorJson, true) ?? [];
+
+        $infoEquipo = \App\Models\Equipos::find($idEquipo);
+
+        $html = $this->construirHtmlTalonario($fecha, $infoEquipo, $descripcion, $nTalonario, $nombreRecibe, $contenedor);
+
+        $this->generarPdfSalida($html);
+    }
+
+
+
+    public function pdfReporteSalidaTalonarioHistorial($id)
+    {
+        $salida = \App\Models\Salidas::with(['equipo', 'detalle.entradaDetalle.material.unidadMedida'])->find($id);
+
+        if (!$salida) {
+            abort(404);
+        }
+
+        $contenedor = $salida->detalle->map(function ($det) {
+            $material = optional($det->entradaDetalle)->material;
+
+            return [
+                'infoIdEntradaDeta' => $det->id_entrada_detalle,
+                'infoCantidad'      => $det->cantidad_salida,
+                'nombreMaterial'    => optional($material)->nombre ?? '',
+                'infoMedida'        => optional(optional($material)->unidadMedida)->nombre ?? '',
+            ];
+        })->toArray();
+
+        $html = $this->construirHtmlTalonario(
+            $salida->fecha,
+            $salida->equipo,
+            $salida->descripcion,
+            $salida->ficha_talonario,
+            $salida->ficha_nombre,
+            $contenedor
+        );
+
+        $this->generarPdfSalida($html);
+    }
+
+    private function construirHtmlTalonario($fecha, $infoEquipo, $descripcion, $nTalonario, $nombreRecibe, array $contenedor)
+    {
+        $fechaFmt     = $fecha ? date('d/m/Y', strtotime($fecha)) : '';
+        $logoalcaldia = 'images/logo.png';
+
+        $html = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c; font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            FORMULARIO DE SALIDA DE BODEGA
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
+                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'><strong>Fecha de vigencia:</strong></td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+<br>
+
+<table width='100%' style='font-family:Arial, sans-serif; font-size:12px; border-collapse:collapse;'>
+    <tr>
+        <td width='35%'><strong>FECHA:</strong> &nbsp; {$fechaFmt}</td>
+        <td width='35%'><strong>EQUIPO:</strong> &nbsp; " . e($infoEquipo->nombre ?? '') . "</td>
+        <td width='30%' style='text-align:center;'><strong>N.</strong> &nbsp; " . e($nTalonario) . "</td>
+    </tr>
+    <tr>
+        <td colspan='3' style='padding-top:6px;'>
+            <strong>NOMBRE:</strong> &nbsp; " . e($nombreRecibe) . "
+        </td>
+    </tr>";
+
+        if ($descripcion) {
+            $html .= "
+    <tr>
+        <td colspan='3' style='padding-top:4px;'>
+            <strong>DESCRIPCIÓN:</strong> &nbsp; " . e($descripcion) . "
+        </td>
+    </tr>";
+        }
+
+        $html .= "
+</table>
+
+<br>
+
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;'>
+    <thead>
+        <tr>
+            <th style='width:15%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
+            <th style='width:65%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
+            <th style='width:20%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>U/M</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        foreach ($contenedor as $item) {
+            $cantidad   = htmlspecialchars($item['infoCantidad']   ?? '');
+            $nombreMat  = htmlspecialchars($item['nombreMaterial'] ?? '');
+            $nombreMed  = htmlspecialchars($item['infoMedida']     ?? '');
+
+            if (!empty($item['infoIdEntradaDeta'])) {
+                $entDet = \App\Models\EntradasDetalle::with('material.unidadMedida')
+                    ->find($item['infoIdEntradaDeta']);
+                if ($entDet && $entDet->material) {
+                    $nombreMat = htmlspecialchars($entDet->material->nombre);
+                    $nombreMed = htmlspecialchars(optional($entDet->material->unidadMedida)->nombre ?? $nombreMed);
+                }
+            }
+
+            $html .= "
+        <tr>
+            <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
+            <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
+            <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$nombreMed}</td>
+        </tr>";
+        }
+
+        $html .= "
+    </tbody>
+</table>
+
+<br><br><br><br>
+
+<table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
+    <tr>
+        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
+        <td width='20%'></td>
+        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
+    </tr>
+    <tr>
+        <td width='40%' style='text-align:center;'><strong>RECIBE</strong></td>
+        <td width='20%'></td>
+        <td width='40%' style='text-align:center;'><strong>ENTREGA</strong></td>
+    </tr>
+</table>";
+
+        return $html;
+    }
+
+    private function generarPdfSalida(string $html)
+    {
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'       => sys_get_temp_dir(),
+            'format'        => 'LETTER',
+            'margin_top'    => 15,
+            'margin_bottom' => 15,
+            'margin_left'   => 15,
+            'margin_right'  => 15,
+        ]);
+
+        $mpdf->SetTitle('Formulario de Salida de Bodega');
+        $mpdf->showImageErrors = false;
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->WriteHTML($html, 2);
+        $mpdf->Output('salida_bodega_' . date('Ymd_His') . '.pdf', 'I');
     }
 
 

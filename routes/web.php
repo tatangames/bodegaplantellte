@@ -142,6 +142,10 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/salidas/extras/guardar',  [HistorialController::class, 'guardarExtrasSalida']);
     Route::post('/admin/historial/salidas/detalle/eliminar', [HistorialController::class, 'eliminarDetalleSalida']);
 
+    Route::get('/admin/historial/salidas/pdf/{id}', [ReportesController::class, 'pdfReporteSalidaTalonarioHistorial'])
+        ->name('admin.historial.salidas.pdf');
+
+
     // --- REPORTE / ENTRADA POR PROYECTO
     Route::get('/admin/reporte/inventario/generales', [ReportesController::class,'vistaReporteGenerales'])->name('admin.reporte.inventario.entrada.index');
     Route::get('/admin/reporte/quehaentrado/pdf/{desde}/{hasta}/{tipo}', [ReportesController::class, 'pdfQueHaEntradoProyectos']);

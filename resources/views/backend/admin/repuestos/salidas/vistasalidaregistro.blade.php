@@ -278,7 +278,8 @@
                                 <thead>
                                 <tr>
                                     <th style="width:6%">#</th>
-                                    <th style="width:55%">Material</th>
+                                    <th style="width:40%">Material</th>
+                                    <th style="width:14%">U/M</th>
                                     <th style="width:15%">Cantidad Salida</th>
                                     <th style="width:14%">Opciones</th>
                                 </tr>
@@ -443,8 +444,9 @@
 
             if (habraSalida) { toastr.error('Registre mínimo 1 salida'); return; }
 
-            var nombreTexto = document.getElementById('info-material').value;
-            var nFilas      = $('#matriz tbody tr').length;
+            var nombreTexto  = document.getElementById('info-material').value;
+            var nombreMedida = document.getElementById('info-medida').value;
+            var nFilas       = $('#matriz tbody tr').length;
 
             for (var z = 0; z < arrayCantidadSalida.length; z++) {
                 var fc2 = arrayCantidadSalida[z];
@@ -456,6 +458,10 @@
                         '<td>' +
                         '<input name="idmaterialArray[]" type="hidden" data-idmaterialArray="' + arrayIdEntradaDetalle[z] + '" data-nombreMaterial="' + nombreTexto + '">' +
                         nombreTexto +
+                        '</td>' +
+                        '<td>' +
+                        '<input name="medidaArray[]" type="hidden" data-nombreMedida="' + nombreMedida + '">' +
+                        nombreMedida +
                         '</td>' +
                         '<td>' +
                         '<input name="salidaArray[]" type="hidden" data-cantidadSalida="' + fc2 + '">' +

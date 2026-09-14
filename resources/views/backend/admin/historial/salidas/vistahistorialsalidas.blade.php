@@ -485,5 +485,9 @@
                 }
             });
         }
+
+        function generarPdfHistorial(id) {
+            window.open(urlAdmin + '/admin/historial/salidas/pdf/' + id, '_blank');
+        }
     </script>
 @endsection

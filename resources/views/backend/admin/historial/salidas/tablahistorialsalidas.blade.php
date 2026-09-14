@@ -32,6 +32,14 @@
                                                 onclick="window.location.href='{{ url('/admin/historial/salidas/extras') }}/{{ $dato->id }}'">
                                             <i class="fas fa-plus"></i> Extras
                                         </button>
+
+                                        <button type="button"
+                                                class="btn btn-primary btn-xs"
+                                                style="margin:2px"
+                                                onclick="generarPdfHistorial({{ $dato->id }})">
+                                            <i class="fas fa-file-pdf"></i> PDF
+                                        </button>
+
                                         <button type="button"
                                                 class="btn btn-info btn-xs"
                                                 style="margin:2px"
