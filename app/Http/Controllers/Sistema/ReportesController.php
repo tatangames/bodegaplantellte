@@ -1682,31 +1682,31 @@ class ReportesController extends Controller
         $estiloSalto = $saltoPagina ? "page-break-before: always;" : "";
 
         $html .= "
-        <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
-            <table width='100%' style='font-size:12px; text-align:center;'>
-                <tr>
-                    <td style='width:33%; text-align:center;'>
-                        F._____________________________<br>
-                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
-                            $informacionGeneral->nombre_reporte
-                        </span><br>
-                    </td>
-                    <td style='width:33%; text-align:center;'>
-                        F._____________________________<br>
-                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
-                            $informacionGeneral->nombre_reporte2
-                        </span><br>
-                    </td>
-                    <td style='width:33%; text-align:center;'>
-                        F._____________________________<br>
-                        <span style='display:inline-block; padding-top:5px; font-weight:bold; font-size:11px;'>
-                            $informacionGeneral->nombre_reporte3
-                        </span><br>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        ";
+            <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
+        <table width='100%' style='font-size:12px; text-align:center;'>
+            <tr>
+                <td style='width:33%; text-align:center;'>
+        F._____________________________
+                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
+                        {$informacionGeneral->nombre_reporte}
+                    </div>
+                </td>
+                <td style='width:33%; text-align:center;'>
+        F._____________________________
+                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
+                        {$informacionGeneral->nombre_reporte2}
+                    </div>
+                </td>
+                <td style='width:33%; text-align:center;'>
+        F._____________________________
+                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
+                        {$informacionGeneral->nombre_reporte3}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    ";
 
         $mpdf->setFooter('Página {PAGENO} de {nb}');
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
