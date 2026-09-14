@@ -390,6 +390,7 @@ class HistorialController extends Controller
                 return [
                     'id'              => $item->id,
                     'material'        => $item->entradaDetalle->material->nombre ?? '',
+                    'unidadMedida'    => $item->entradaDetalle->material->unidadMedida->nombre ?? '',
                     'cantidad_salida' => $item->cantidad_salida,
                     'precio'          => number_format($item->entradaDetalle->precio ?? 0, 4),
                 ];

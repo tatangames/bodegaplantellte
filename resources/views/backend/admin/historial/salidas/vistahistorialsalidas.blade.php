@@ -70,7 +70,7 @@
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <div style="width:100%">
-                                    <button class="btn btn-primary btn-block mb-1" onclick="recargar()">
+                                    <button class="btn btn-primary btn-block mb-1" onclick="buscarConFiltros()">
                                         <i class="fas fa-search mr-1"></i> Filtrar
                                     </button>
                                     <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
@@ -97,11 +97,20 @@
                 <div class="card card-blue">
                     <div class="card-header">
                         <h3 class="card-title">Listado de Salidas</h3>
+                        <div class="card-tools">
+                            <span class="badge badge-info" id="badge-total" style="display:none"></span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div id="tablaDatatable"></div>
+                    <div class="card-body p-0">
+                        <div id="div-instruccion" class="text-center text-muted py-5">
+                            <i class="fas fa-search fa-3x mb-3 d-block"></i>
+                            <p class="mb-0">Utiliza los filtros de arriba y presiona <strong>Filtrar</strong> para ver el historial.</p>
+                        </div>
+                        <div id="div-tabla" style="display:none">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div id="tablaDatatable"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -186,6 +195,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Material</th>
+                                <th>Unidad Medida</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
                                 <th class="text-center">Acciones</th>
@@ -217,72 +227,9 @@
         var _salidaIdActual     = null;
         var _salidaTituloActual = '';
 
+        const RUTA_TABLA = "{{ url('/admin/historial/salidas/tabla') }}";
+
         $(function () {
-            const ruta = "{{ url('/admin/historial/salidas/tabla') }}";
-
-            function initDataTable() {
-                if ($.fn.DataTable.isDataTable('#tabla')) {
-                    $('#tabla').DataTable().destroy();
-                }
-                $('#tabla').DataTable({
-                    paging: true,
-                    lengthChange: true,
-                    searching: true,
-                    ordering: true,
-                    info: true,
-                    autoWidth: false,
-                    responsive: true,
-                    pagingType: "full_numbers",
-                    lengthMenu: [[50, 100, -1], [50, 100, "Todo"]],
-                    language: {
-                        sProcessing:   "Procesando...",
-                        sLengthMenu:   "Mostrar _MENU_ registros",
-                        sZeroRecords:  "No se encontraron resultados",
-                        sEmptyTable:   "Ningún dato disponible en esta tabla",
-                        sInfo:         "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                        sInfoEmpty:    "Mostrando 0 a 0 de 0 registros",
-                        sInfoFiltered: "(filtrado de _MAX_ registros)",
-                        sSearch:       "Buscar:",
-                        oPaginate: {
-                            sFirst: "Primero", sLast: "Último",
-                            sNext: "Siguiente", sPrevious: "Anterior"
-                        }
-                    },
-                    dom:
-                        "<'row align-items-center'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-md-right'f>>" +
-                        "tr" +
-                        "<'row align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-                });
-                $('#tabla_length select').addClass('form-control form-control-sm');
-                $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
-            }
-
-            function cargarTabla() {
-                const equipo     = $('#filtro-equipo').val();
-                const fechaDesde = $('#filtro-fecha-desde').val();
-                const fechaHasta = $('#filtro-fecha-hasta').val();
-                const material   = $('#filtro-material').val().trim();
-
-                const params = new URLSearchParams();
-                if (equipo)     params.append('equipo',      equipo);
-                if (fechaDesde) params.append('fecha_desde', fechaDesde);
-                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
-                if (material)   params.append('material',    material);
-
-                const url = params.toString() ? ruta + '?' + params.toString() : ruta;
-                $('#tablaDatatable').load(url, function () { initDataTable(); });
-            }
-
-            window.recargar = function () { cargarTabla(); };
-
-            window.limpiarFiltros = function () {
-                $('#filtro-equipo').val('').trigger('change');
-                $('#filtro-fecha-desde').val('');
-                $('#filtro-fecha-hasta').val('');
-                $('#filtro-material').val('');
-                cargarTabla();
-            };
-
             $('#filtro-equipo').select2({
                 theme: 'bootstrap-5',
                 placeholder: '— Todos —',
@@ -301,8 +248,89 @@
                 eliminarDetalleItem($(this).data('id'), $(this).data('material'), $(this).data('salida-id'));
             });
 
-            cargarTabla();
+            // Ya NO se carga la tabla automáticamente al entrar.
+            // Solo se muestra el mensaje de instrucción (div-instruccion).
         });
+
+        // ── Inicializar DataTable ───────────────────────────────────
+        function initDataTable() {
+            if ($.fn.DataTable.isDataTable('#tabla')) {
+                $('#tabla').DataTable().destroy();
+            }
+            $('#tabla').DataTable({
+                paging: true,
+                lengthChange: true,
+                searching: true,
+                ordering: true,
+                info: true,
+                autoWidth: false,
+                responsive: true,
+                pagingType: "full_numbers",
+                lengthMenu: [[50, 100, -1], [50, 100, "Todo"]],
+                language: {
+                    sProcessing:   "Procesando...",
+                    sLengthMenu:   "Mostrar _MENU_ registros",
+                    sZeroRecords:  "No se encontraron resultados",
+                    sEmptyTable:   "Ningún dato disponible en esta tabla",
+                    sInfo:         "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    sInfoEmpty:    "Mostrando 0 a 0 de 0 registros",
+                    sInfoFiltered: "(filtrado de _MAX_ registros)",
+                    sSearch:       "Buscar:",
+                    oPaginate: {
+                        sFirst: "Primero", sLast: "Último",
+                        sNext: "Siguiente", sPrevious: "Anterior"
+                    }
+                },
+                dom:
+                    "<'row align-items-center'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-md-right'f>>" +
+                    "tr" +
+                    "<'row align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+            });
+            $('#tabla_length select').addClass('form-control form-control-sm');
+            $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
+        }
+
+        // ── Buscar con filtros (se dispara solo con el botón Filtrar) ──
+        function buscarConFiltros() {
+            const equipo     = $('#filtro-equipo').val();
+            const fechaDesde = $('#filtro-fecha-desde').val();
+            const fechaHasta = $('#filtro-fecha-hasta').val();
+            const material   = $('#filtro-material').val().trim();
+
+            const params = new URLSearchParams();
+            if (equipo)     params.append('equipo',      equipo);
+            if (fechaDesde) params.append('fecha_desde', fechaDesde);
+            if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+            if (material)   params.append('material',    material);
+
+            // Si no se llenó ningún filtro, params queda vacío y se trae todo.
+            const url = params.toString() ? RUTA_TABLA + '?' + params.toString() : RUTA_TABLA;
+
+            $('#div-instruccion').hide();
+            $('#div-tabla').show();
+            $('#tablaDatatable').html(
+                '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>'
+            );
+
+            $('#tablaDatatable').load(url, function () {
+                initDataTable();
+                const total = $('#tabla tbody tr').length;
+                $('#badge-total').text(total + ' registros').show();
+            });
+        }
+
+        // Se mantiene el nombre "recargar" por compatibilidad con otras llamadas
+        window.recargar = function () { buscarConFiltros(); };
+
+        function limpiarFiltros() {
+            $('#filtro-equipo').val('').trigger('change');
+            $('#filtro-fecha-desde').val('');
+            $('#filtro-fecha-hasta').val('');
+            $('#filtro-material').val('');
+            $('#div-instruccion').show();
+            $('#div-tabla').hide();
+            $('#badge-total').hide();
+        }
 
         // ── Editar cabecera ───────────────────────────────────────
         function modalEditar(id) {
@@ -354,7 +382,7 @@
                     if (response.data.success === 1) {
                         toastr.success('Salida actualizada correctamente');
                         $('#modalEditar').modal('hide');
-                        recargar();
+                        buscarConFiltros();
                     } else {
                         toastr.error('Error al actualizar');
                     }
@@ -381,7 +409,7 @@
                             closeLoading();
                             if (response.data.success === 1) {
                                 toastr.success('Salida eliminada correctamente');
-                                recargar();
+                                buscarConFiltros();
                             } else {
                                 toastr.error('Error al eliminar');
                             }
@@ -413,6 +441,7 @@
                                 <tr>
                                     <td>${index + 1}</td>
                                     <td>${fila.material}</td>
+                                    <td>${fila.unidadMedida}</td>
                                     <td class="text-center">${fila.cantidad_salida}</td>
                                     <td class="text-right">$${fila.precio}</td>
                                     <td class="text-center">
@@ -467,11 +496,11 @@
                                     if (response.data.salida_borrada) {
                                         toastr.success('Material eliminado. La salida fue eliminada por quedar vacía.');
                                         $('#modalDetalle').modal('hide');
-                                        recargar();
+                                        buscarConFiltros();
                                     } else {
                                         toastr.success('Material eliminado correctamente');
                                         recargarDetalle();
-                                        recargar();
+                                        buscarConFiltros();
                                     }
                                     break;
                                 case 0:
