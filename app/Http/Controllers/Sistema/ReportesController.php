@@ -1682,26 +1682,22 @@ class ReportesController extends Controller
         $estiloSalto = $saltoPagina ? "page-break-before: always;" : "";
 
         $html .= "
-            <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
-        <table width='100%' style='font-size:12px; text-align:center;'>
+    <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
+        <table width='100%' style='font-size:12px; text-align:center; border-collapse:collapse;'>
             <tr>
-                <td style='width:33%; text-align:center;'>
-        F._____________________________
-                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
-                        {$informacionGeneral->nombre_reporte}
-                    </div>
+                <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
+                <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
+                <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
+            </tr>
+            <tr>
+                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->nombre_reporte}
                 </td>
-                <td style='width:33%; text-align:center;'>
-        F._____________________________
-                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
-                        {$informacionGeneral->nombre_reporte2}
-                    </div>
+                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->nombre_reporte2}
                 </td>
-                <td style='width:33%; text-align:center;'>
-        F._____________________________
-                    <div style='display:block; margin-top:12px; font-weight:bold; font-size:12px;'>
-                        {$informacionGeneral->nombre_reporte3}
-                    </div>
+                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->nombre_reporte3}
                 </td>
             </tr>
         </table>
