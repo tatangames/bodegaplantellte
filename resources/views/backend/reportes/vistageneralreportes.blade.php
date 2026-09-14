@@ -77,6 +77,13 @@
         }
         .tipo-badge.juntos   { background:#d4edda; color:#155724; }
         .tipo-badge.separado { background:#cce5ff; color:#004085; }
+        .firma-divider {
+            border: none; border-top: 2px solid #f0f0f0; margin: 22px 0 18px 0;
+        }
+        .firma-subtitle {
+            font-size: 12px; font-weight: 700; color: #6b4a1a;
+            text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px;
+        }
     </style>
 
     <section class="content">
@@ -226,30 +233,14 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                box-shadow: 0 4px 14px rgba(232,142,26,.35); margin-top:0;">
                                 <i class="fas fa-file-pdf"></i> Generar PDF
                             </button>
-                        </div>
-                    </div>
-                </div>
 
+                            {{-- ══ NOMBRES PARA FIRMA EN REPORTE (movido aquí) ══ --}}
+                            <hr class="firma-divider">
+                            <div class="firma-subtitle">Nombres para Firma en Reporte</div>
 
-
-                <hr>
-
-                {{-- ══ ENTRADAS / SALIDAS POR PERÍODO ══ --}}
-                <div class="col-md-4">
-                    <div class="reporte-card">
-
-                        <div class="reporte-header"
-                             style="background: linear-gradient(135deg, #6b4a1a, #e88e1a);">
-                            <i class="fas fa-exchange-alt"></i>
-                            <h5>Nombre para Firma en Reporte</h5>
-                        </div>
-
-                        <div class="reporte-body">
-
-                            <!-- Nombre -->
                             <div class="fecha-row">
                                 <div class="fecha-box">
-                                    <label for="nombre-firma">Nombre</label>
+                                    <label for="nombre-firma">Encargado de Bodega</label>
                                     <input type="text"
                                            id="nombre-firma"
                                            maxlength="100"
@@ -260,7 +251,29 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
 
                             <div class="fecha-row">
                                 <div class="fecha-box">
-                                    <label for="nombre-firma">Distancia para Firma</label>
+                                    <label for="nombre-firma2">Jefe Inmediato</label>
+                                    <input type="text"
+                                           id="nombre-firma2"
+                                           maxlength="100"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->nombre_reporte2 }}">
+                                </div>
+                            </div>
+
+                            <div class="fecha-row">
+                                <div class="fecha-box">
+                                    <label for="nombre-firma3">Gerente de Servicios y Desarrollo Territorial</label>
+                                    <input type="text"
+                                           id="nombre-firma3"
+                                           maxlength="100"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->nombre_reporte3 }}">
+                                </div>
+                            </div>
+
+                            <div class="fecha-row">
+                                <div class="fecha-box">
+                                    <label for="px_firmas">Distancia para Firma</label>
                                     <input type="number"
                                            id="px_firmas"
                                            class="form-control form-control-sm"
@@ -268,8 +281,7 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                 </div>
                             </div>
 
-                            <!-- Salto de página -->
-                            <div class="mt-3">
+                            <div class="mt-2">
                                 <div class="custom-control custom-switch">
                                     <input type="checkbox"
                                            class="custom-control-input"
@@ -284,7 +296,6 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                 </div>
                             </div>
 
-                            <!-- Botón -->
                             <div class="mt-3">
                                 <button type="button"
                                         class="btn btn-primary"
@@ -293,11 +304,9 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                     Guardar
                                 </button>
                             </div>
-
                         </div>
                     </div>
                 </div>
-
 
             </div>
         </div>
@@ -362,18 +371,17 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
 
 
         function guardarNombreReporte(){
-            var nombreFirma = $('#nombre-firma').val().trim();
-            var saltoPagina = $('#config-salto-pagina').is(':checked') ? 1 : 0;
-            const px_firmas = $('#px_firmas').val().trim();
-
-            if (nombreFirma === '') {
-                toastr.error('Debe ingresar un nombre');
-                return;
-            }
+            var nombreFirma  = $('#nombre-firma').val().trim();
+            var nombreFirma2 = $('#nombre-firma2').val().trim();
+            var nombreFirma3 = $('#nombre-firma3').val().trim();
+            var saltoPagina  = $('#config-salto-pagina').is(':checked') ? 1 : 0;
+            const px_firmas  = $('#px_firmas').val().trim();
 
             axios.post("{{ route('admin.informacion.actualizar.px') }}", {
                 _token: '{{ csrf_token() }}',
-                nombre_reporte: nombreFirma,
+                nombre_reporte: nombreFirma || null,
+                nombre_reporte2: nombreFirma2 || null,
+                nombre_reporte3: nombreFirma3 || null,
                 salto_pagina: saltoPagina,
                 px_firmas: px_firmas,
             })
