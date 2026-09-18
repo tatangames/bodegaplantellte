@@ -96,7 +96,7 @@
                         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filtros</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row align-items-end">
+                        <div class="row">
                             <div class="col-md-3">
                                 <label class="font-weight-bold">Fecha desde (Opcional)</label>
                                 <input type="date" class="form-control" id="filtro-fecha-desde">
@@ -104,6 +104,39 @@
                             <div class="col-md-3">
                                 <label class="font-weight-bold">Fecha hasta (Opcional)</label>
                                 <input type="date" class="form-control" id="filtro-fecha-hasta">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Tipo de Entrada (Opcional)</label>
+                                <select id="filtro-tipoentrada" class="form-control" style="width:100%">
+                                    <option value="">Todos</option>
+                                    @foreach($arrayTipoEntrada as $te)
+                                        <option value="{{ $te->id }}">{{ $te->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Tipo de Compra (Opcional)</label>
+                                <select id="filtro-tipocompra" class="form-control" style="width:100%">
+                                    <option value="">Todos</option>
+                                    @foreach($arrayTipoCompra as $tc)
+                                        <option value="{{ $tc->id }}">{{ $tc->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Proveedor (Opcional)</label>
+                                <select id="filtro-proveedor" class="form-control" style="width:100%">
+                                    <option value="">Todos</option>
+                                    @foreach($arrayProveedor as $prov)
+                                        <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Factura (Opcional)</label>
+                                <input type="text" class="form-control" id="filtro-factura" placeholder="Número de factura" maxlength="100">
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <div style="width:100%">
@@ -237,6 +270,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Material</th>
+                                <th>Unidad</th>
                                 <th>Detalle/Código</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
@@ -280,6 +314,7 @@
                         <div class="form-group">
                             <label>
                                 Cantidad <span class="text-danger">*</span>
+                                <small>Solo editable sino ha retirado</small>
                                 <small id="detalle-cantidad-aviso" class="text-danger ml-1" style="display:none;">
                                     (no editable — tiene salidas)
                                 </small>
@@ -380,12 +415,20 @@
 
             // ── Cargar tabla ──────────────────────────────────────
             function cargarTabla() {
-                const fechaDesde = $('#filtro-fecha-desde').val();
-                const fechaHasta = $('#filtro-fecha-hasta').val();
+                const fechaDesde   = $('#filtro-fecha-desde').val();
+                const fechaHasta   = $('#filtro-fecha-hasta').val();
+                const tipoEntrada  = $('#filtro-tipoentrada').val();
+                const tipoCompra   = $('#filtro-tipocompra').val();
+                const proveedor    = $('#filtro-proveedor').val();
+                const factura      = $('#filtro-factura').val().trim();
 
                 const params = new URLSearchParams();
-                if (fechaDesde) params.append('fecha_desde', fechaDesde);
-                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                if (fechaDesde)  params.append('fecha_desde', fechaDesde);
+                if (fechaHasta)  params.append('fecha_hasta', fechaHasta);
+                if (tipoEntrada) params.append('id_tipoentrada', tipoEntrada);
+                if (tipoCompra)  params.append('id_tipocompra', tipoCompra);
+                if (proveedor)   params.append('id_proveedor', proveedor);
+                if (factura)     params.append('factura', factura);
 
                 const url = ruta + (params.toString() ? '?' + params.toString() : '');
                 $('#tablaDatatable').load(url, function () { initDataTable(); });
@@ -396,6 +439,10 @@
             window.limpiarFiltros = function () {
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
+                $('#filtro-tipoentrada').val('').trigger('change');
+                $('#filtro-tipocompra').val('').trigger('change');
+                $('#filtro-proveedor').val('').trigger('change');
+                $('#filtro-factura').val('');
                 cargarTabla();
             };
 
@@ -403,7 +450,8 @@
             $('#tablaDatatable').html(avisoHtml);
 
             // ── Select2 modales con body como padre (fix zoom) ────
-            ['select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar'].forEach(function (id) {
+            ['filtro-tipoentrada', 'filtro-tipocompra', 'filtro-proveedor',
+                'select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar'].forEach(function (id) {
                 $('#' + id).select2({
                     theme: 'bootstrap-5',
                     dropdownParent: $('body'),
@@ -564,6 +612,7 @@
                                 <tr>
                                     <td>${index + 1}</td>
                                     <td>${fila.material}</td>
+                                    <td>${fila.unidad}</td>
                                     <td>${fila.codigo}</td>
                                     <td class="text-center">${fila.cantidad_inicial}</td>
                                     <td class="text-right">$${fila.precio}</td>

@@ -61,6 +61,11 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
+                                <label class="font-weight-bold">N. Talonario</label>
+                                <input type="text" class="form-control" id="filtro-talonario"
+                                       placeholder="Número de talonario..." maxlength="100">
+                            </div>
+                            <div class="col-md-3">
                                 <label class="font-weight-bold">Fecha desde</label>
                                 <input type="date" class="form-control" id="filtro-fecha-desde">
                             </div>
@@ -68,22 +73,22 @@
                                 <label class="font-weight-bold">Fecha hasta</label>
                                 <input type="date" class="form-control" id="filtro-fecha-hasta">
                             </div>
-                            <div class="col-md-3 d-flex align-items-end">
-                                <div style="width:100%">
-                                    <button class="btn btn-primary btn-block mb-1" onclick="buscarConFiltros()">
-                                        <i class="fas fa-search mr-1"></i> Filtrar
-                                    </button>
-                                    <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
-                                        <i class="fas fa-times mr-1"></i> Limpiar
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                         <div class="row align-items-end mt-3">
                             <div class="col-md-6">
                                 <label class="font-weight-bold">Buscar por material</label>
                                 <input type="text" class="form-control" id="filtro-material"
                                        placeholder="Nombre del material...">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div style="width:100%">
+                                    <button class="btn btn-primary mr-2" onclick="buscarConFiltros()">
+                                        <i class="fas fa-search mr-1"></i> Filtrar
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="limpiarFiltros()">
+                                        <i class="fas fa-times mr-1"></i> Limpiar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -293,12 +298,14 @@
         // ── Buscar con filtros (se dispara solo con el botón Filtrar) ──
         function buscarConFiltros() {
             const equipo     = $('#filtro-equipo').val();
+            const talonario  = $('#filtro-talonario').val().trim();
             const fechaDesde = $('#filtro-fecha-desde').val();
             const fechaHasta = $('#filtro-fecha-hasta').val();
             const material   = $('#filtro-material').val().trim();
 
             const params = new URLSearchParams();
             if (equipo)     params.append('equipo',      equipo);
+            if (talonario)  params.append('talonario',   talonario);
             if (fechaDesde) params.append('fecha_desde', fechaDesde);
             if (fechaHasta) params.append('fecha_hasta', fechaHasta);
             if (material)   params.append('material',    material);
@@ -324,6 +331,7 @@
 
         function limpiarFiltros() {
             $('#filtro-equipo').val('').trigger('change');
+            $('#filtro-talonario').val('');
             $('#filtro-fecha-desde').val('');
             $('#filtro-fecha-hasta').val('');
             $('#filtro-material').val('');

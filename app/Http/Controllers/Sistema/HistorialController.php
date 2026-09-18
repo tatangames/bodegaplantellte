@@ -41,6 +41,10 @@ class HistorialController extends Controller
         $arrayEntradas = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor', 'detalle'])
             ->when($request->fecha_desde, fn($q) => $q->whereDate('fecha', '>=', $request->fecha_desde))
             ->when($request->fecha_hasta, fn($q) => $q->whereDate('fecha', '<=', $request->fecha_hasta))
+            ->when($request->id_tipoentrada, fn($q) => $q->where('id_tipoentrada', $request->id_tipoentrada))
+            ->when($request->id_tipocompra, fn($q) => $q->where('id_tipocompra', $request->id_tipocompra))
+            ->when($request->id_proveedor, fn($q) => $q->where('id_proveedor', $request->id_proveedor))
+            ->when($request->factura, fn($q) => $q->where('factura', 'like', '%' . $request->factura . '%'))
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
@@ -148,7 +152,7 @@ class HistorialController extends Controller
         }
 
         $detalle = $entrada->detalle()
-            ->with('material')
+            ->with('material.unidadMedida')
             ->get()
             ->map(function ($item) {
                 $tieneSalidas = SalidasDetalle::where('id_entrada_detalle', $item->id)->exists();
@@ -157,6 +161,7 @@ class HistorialController extends Controller
                     'codigo'           => $item->codigo ?? '',
                     'nombre'           => $item->nombre ?? '',
                     'material'         => $item->material->nombre ?? '',
+                    'unidad'           => $item->material->unidadMedida->nombre ?? '',
                     'cantidad_inicial' => $item->cantidad_inicial,
                     'precio'           => number_format($item->precio, 4),
                     'precio_raw'       => $item->precio,
@@ -296,6 +301,9 @@ class HistorialController extends Controller
             )
             ->when($request->fecha_hasta, fn($q) =>
             $q->whereDate('fecha', '<=', $request->fecha_hasta)
+            )
+            ->when($request->talonario, fn($q) =>
+            $q->where('ficha_talonario', 'LIKE', '%' . $request->talonario . '%')
             )
             ->when($request->material, function ($q) use ($request) {
                 $busqueda = '%' . $request->material . '%';
