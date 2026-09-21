@@ -105,11 +105,11 @@
 
                             <div class="fecha-row">
                                 <div class="fecha-box">
-                                    <label>Desde</label>
+                                    <label>Desde (Opcional)</label>
                                     <input type="date" class="form-control" id="entrada-desde">
                                 </div>
                                 <div class="fecha-box">
-                                    <label>Hasta</label>
+                                    <label>Hasta (Opcional)</label>
                                     <input type="date" class="form-control" id="entrada-hasta">
                                 </div>
                             </div>
@@ -142,11 +142,11 @@
 
                             <div class="fecha-row">
                                 <div class="fecha-box">
-                                    <label>Desde</label>
+                                    <label>Desde (Opcional)</label>
                                     <input type="date" class="form-control" id="salida-desde">
                                 </div>
                                 <div class="fecha-box">
-                                    <label>Hasta</label>
+                                    <label>Hasta (Opcional)</label>
                                     <input type="date" class="form-control" id="salida-hasta">
                                 </div>
                             </div>
