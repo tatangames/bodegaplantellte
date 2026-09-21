@@ -599,7 +599,7 @@ class ReportesController extends Controller
             $query = Entradas::with([
                 'tipoEntrada',
                 'tipoCompra',
-                'proveedor',                               // ← eager load proveedor
+                'proveedor',
                 'detalle.material.unidadMedida',
                 'detalle.material.objetoEspecifico',
             ]);
@@ -610,7 +610,7 @@ class ReportesController extends Controller
                 $fechaFmt    = date('d-m-Y', strtotime($entrada->fecha));
                 $tipoEntrada = $entrada->tipoEntrada->nombre   ?? '';
                 $tipoCompra  = $entrada->tipoCompra->nombre    ?? '';
-                $proveedor   = $entrada->proveedor->nombre     ?? '—';   // ← nuevo
+                $proveedor   = $entrada->proveedor->nombre     ?? '—';
                 $factura     = $entrada->factura               ?? '';
                 $descripcion = $entrada->descripcion           ?? '';
 
@@ -694,8 +694,6 @@ class ReportesController extends Controller
         $tabla .= "
 <table width='100%' style='margin-top:10px; border-collapse:collapse;'>
     <tr>
-        <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL CANTIDAD:&nbsp;&nbsp;</td>
-        <td style='font-weight:bold; font-size:13px; width:12%; border-top:2px solid #000; padding-top:6px;'>$sumaTotalCantidadFmt</td>
         <td style='font-weight:bold; font-size:13px; text-align:right; border-top:2px solid #000; padding-top:6px;'>TOTAL GENERAL:&nbsp;&nbsp;</td>
         <td style='font-weight:bold; font-size:13px; width:18%; border-top:2px solid #000; padding-top:6px;'>\$ $granTotalFmt</td>
     </tr>
@@ -711,14 +709,13 @@ class ReportesController extends Controller
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
     <thead>
         <tr style='background:#6c757d;'>
-            <td colspan='3' style='color:#fff; font-weight:bold; font-size:12px; padding:6px 8px; border:0.8px solid #888; text-align:center; letter-spacing:0.5px;'>
+            <td colspan='2' style='color:#fff; font-weight:bold; font-size:12px; padding:6px 8px; border:0.8px solid #888; text-align:center; letter-spacing:0.5px;'>
                 RESUMEN POR CODIGO PRESUPUESTARIO
             </td>
         </tr>
         <tr style='background:#6c757d;'>
-            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:20%;'>Cod. Presu.</td>
-            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Cantidad Total</td>
-            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%; text-align:right;'>Monto Total (\$)</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:40%;'>Cod. Presu.</td>
+            <td style='color:#fff; font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #888; width:60%; text-align:right;'>Monto Total (\$)</td>
         </tr>
     </thead>
     <tbody>";
@@ -726,13 +723,11 @@ class ReportesController extends Controller
         $filaIndex = 0;
         foreach ($resumenObjEsp as $codigo => $datos) {
             $bgFila   = ($filaIndex % 2 === 0) ? '#ffffff' : '#f0f0f0';
-            $cantFmt  = number_format($datos['cantidad'], 2);
             $montoFmt = number_format($datos['total'], 4);
 
             $tabla .= "
         <tr style='background:{$bgFila};'>
             <td style='font-size:11px; font-weight:bold; padding:5px 8px; border:0.8px solid #ccc;'>{$codigo}</td>
-            <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>{$cantFmt}</td>
             <td style='font-size:11px; padding:5px 8px; border:0.8px solid #ccc; text-align:right;'>\$ {$montoFmt}</td>
         </tr>";
             $filaIndex++;
@@ -741,7 +736,6 @@ class ReportesController extends Controller
         $tabla .= "
         <tr style='background:#e9ecef;'>
             <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb;'>TOTAL</td>
-            <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>{$sumaTotalCantidadFmt}</td>
             <td style='font-weight:bold; font-size:11px; padding:5px 8px; border:0.8px solid #bbb; text-align:right;'>\$ {$granTotalFmt}</td>
         </tr>
     </tbody>
@@ -763,8 +757,6 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output('entradas_' . date('Ymd_His') . '.pdf', 'I');
     }
-
-
 
 
 
