@@ -745,14 +745,15 @@ class ReportesController extends Controller
 
 
 
-
-
     public function actualizarPxInformacionGeneral(Request $request)
     {
         $rules = [
             'nombre_reporte'  => 'nullable|string|max:100',
+            'cargo_reporte'   => 'nullable|string|max:100',
             'nombre_reporte2' => 'nullable|string|max:100',
+            'cargo_reporte2'  => 'nullable|string|max:100',
             'nombre_reporte3' => 'nullable|string|max:100',
+            'cargo_reporte3'  => 'nullable|string|max:100',
             'salto_pagina'    => 'required|boolean',
             'px_firmas'       => 'required|numeric',
         ];
@@ -772,8 +773,11 @@ class ReportesController extends Controller
             }
 
             $info->nombre_reporte  = $request->nombre_reporte;
+            $info->cargo_reporte   = $request->cargo_reporte;
             $info->nombre_reporte2 = $request->nombre_reporte2;
+            $info->cargo_reporte2  = $request->cargo_reporte2;
             $info->nombre_reporte3 = $request->nombre_reporte3;
+            $info->cargo_reporte3  = $request->cargo_reporte3;
             $info->salto_pagina    = (int) $request->salto_pagina;
             $info->px_firmas       = (int) $request->px_firmas;
 
@@ -790,6 +794,10 @@ class ReportesController extends Controller
             return ['success' => 99];
         }
     }
+
+
+
+
 
     public function pdfInventarioActual($idMaterial = 0)
     {
@@ -1495,6 +1503,7 @@ class ReportesController extends Controller
         }
 
         // ── Firma (3 bloques) ─────────────────────────────────────────────────
+        // ── Firma (3 bloques) ─────────────────────────────────────────────────
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();
         $margenFirma  = (int)  ($informacionGeneral->px_firmas ?? 40);
         $saltoPagina  = (bool) ($informacionGeneral->salto_pagina ?? false);
@@ -1510,14 +1519,25 @@ class ReportesController extends Controller
                 <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
             </tr>
             <tr>
-                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte}
                 </td>
-                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte2}
                 </td>
-                <td style='width:33%; text-align:center; padding-top:20px; font-weight:bold; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte3}
+                </td>
+            </tr>
+            <tr>
+                <td style='width:33%; text-align:center; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->cargo_reporte}
+                </td>
+                <td style='width:33%; text-align:center; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->cargo_reporte2}
+                </td>
+                <td style='width:33%; text-align:center; font-weight:bold; font-size:12px;'>
+                    {$informacionGeneral->cargo_reporte3}
                 </td>
             </tr>
         </table>
@@ -1528,9 +1548,6 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
-
-
-
 
 
 

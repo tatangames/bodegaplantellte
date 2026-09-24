@@ -22,8 +22,11 @@ return new class extends Migration
             $table->string('nombre_reporte2', 100)->nullable();
             $table->string('nombre_reporte3', 100)->nullable();
 
-
             $table->boolean('salto_pagina');
+
+            $table->string('cargo_reporte', 100)->nullable();
+            $table->string('cargo_reporte2', 100)->nullable();
+            $table->string('cargo_reporte3', 100)->nullable();
 
         });
     }

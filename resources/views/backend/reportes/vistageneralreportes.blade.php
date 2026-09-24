@@ -212,7 +212,7 @@
                         <div class="reporte-body">
                             <p style="font-size:13px; color:#666; margin-bottom:14px;">
                                 <span style="color: red; font-size: 16px">
-Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el siguiente mes ya no aparecerá si ya no tiene unidades.
+                            Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el siguiente mes ya no aparecerá si ya no tiene unidades.
                                 </span>
                             </p>
                             <hr class="divider">
@@ -234,7 +234,9 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                 <i class="fas fa-file-pdf"></i> Generar PDF
                             </button>
 
-                            {{-- ══ NOMBRES PARA FIRMA EN REPORTE (movido aquí) ══ --}}
+
+
+                            {{-- ══ NOMBRES PARA FIRMA EN REPORTE ══ --}}
                             <hr class="firma-divider">
                             <div class="firma-subtitle">Nombres para Firma en Reporte</div>
 
@@ -247,6 +249,14 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                            class="form-control form-control-sm"
                                            value="{{ $informacionGeneral->nombre_reporte }}">
                                 </div>
+                                <div class="fecha-box">
+                                    <label for="cargo-firma">Cargo</label>
+                                    <input type="text"
+                                           id="cargo-firma"
+                                           maxlength="100"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->cargo_reporte }}">
+                                </div>
                             </div>
 
                             <div class="fecha-row">
@@ -258,6 +268,14 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                            class="form-control form-control-sm"
                                            value="{{ $informacionGeneral->nombre_reporte2 }}">
                                 </div>
+                                <div class="fecha-box">
+                                    <label for="cargo-firma2">Cargo</label>
+                                    <input type="text"
+                                           id="cargo-firma2"
+                                           maxlength="100"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->cargo_reporte2 }}">
+                                </div>
                             </div>
 
                             <div class="fecha-row">
@@ -268,6 +286,14 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                            maxlength="100"
                                            class="form-control form-control-sm"
                                            value="{{ $informacionGeneral->nombre_reporte3 }}">
+                                </div>
+                                <div class="fecha-box">
+                                    <label for="cargo-firma3">Cargo</label>
+                                    <input type="text"
+                                           id="cargo-firma3"
+                                           maxlength="100"
+                                           class="form-control form-control-sm"
+                                           value="{{ $informacionGeneral->cargo_reporte3 }}">
                                 </div>
                             </div>
 
@@ -304,6 +330,9 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
                                     Guardar
                                 </button>
                             </div>
+
+
+
                         </div>
                     </div>
                 </div>
@@ -372,16 +401,22 @@ Si el material tuvo todas sus salidas en el mes, sí aparecerá; pero en el sigu
 
         function guardarNombreReporte(){
             var nombreFirma  = $('#nombre-firma').val().trim();
+            var cargoFirma   = $('#cargo-firma').val().trim();
             var nombreFirma2 = $('#nombre-firma2').val().trim();
+            var cargoFirma2  = $('#cargo-firma2').val().trim();
             var nombreFirma3 = $('#nombre-firma3').val().trim();
+            var cargoFirma3  = $('#cargo-firma3').val().trim();
             var saltoPagina  = $('#config-salto-pagina').is(':checked') ? 1 : 0;
             const px_firmas  = $('#px_firmas').val().trim();
 
             axios.post("{{ route('admin.informacion.actualizar.px') }}", {
                 _token: '{{ csrf_token() }}',
                 nombre_reporte: nombreFirma || null,
+                cargo_reporte: cargoFirma || null,
                 nombre_reporte2: nombreFirma2 || null,
+                cargo_reporte2: cargoFirma2 || null,
                 nombre_reporte3: nombreFirma3 || null,
+                cargo_reporte3: cargoFirma3 || null,
                 salto_pagina: saltoPagina,
                 px_firmas: px_firmas,
             })
