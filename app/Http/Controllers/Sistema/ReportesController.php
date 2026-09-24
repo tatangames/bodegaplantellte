@@ -1518,13 +1518,13 @@ class ReportesController extends Controller
                 <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
             </tr>
             <tr>
-                <td style='width:33%; text-align:center; font-weight:bold; padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte}
                 </td>
-                <td style='width:33%; text-align:center; font-weight:bold; padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte2}
                 </td>
-                <td style='width:33%; text-align:center; font-weight:bold; padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte3}
                 </td>
             </tr>
