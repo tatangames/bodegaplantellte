@@ -247,9 +247,10 @@
         </div>
     </div>
 
+
     {{-- ══ Modal Detalle Entrada ══ --}}
     <div class="modal fade" id="modalDetalle" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white">
@@ -269,6 +270,7 @@
                             <thead class="thead-dark">
                             <tr>
                                 <th>#</th>
+                                <th>Ubicación</th>
                                 <th>Material</th>
                                 <th>Unidad</th>
                                 <th>Detalle/Código</th>
@@ -292,6 +294,7 @@
         </div>
     </div>
 
+
     {{-- ══ Modal Editar Detalle ══ --}}
     <div class="modal fade" id="modalEditarDetalle" tabindex="-1">
         <div class="modal-dialog modal-md">
@@ -310,6 +313,15 @@
                         <div class="form-group">
                             <label>Material</label>
                             <input type="text" id="detalle-material-editar" class="form-control" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Ubicación <span class="text-danger">*</span></label>
+                            <select id="detalle-ubicacion-editar" class="form-control" style="width:100%">
+                                <option value="">Seleccione...</option>
+                                @foreach($arrayUbicaciones as $ubi)
+                                    <option value="{{ $ubi->id }}">{{ $ubi->nombre }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>
@@ -342,6 +354,8 @@
             </div>
         </div>
     </div>
+
+
 @stop
 
 @section('js')
@@ -451,7 +465,8 @@
 
             // ── Select2 modales con body como padre (fix zoom) ────
             ['filtro-tipoentrada', 'filtro-tipocompra', 'filtro-proveedor',
-                'select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar'].forEach(function (id) {
+                'select-tipoentrada-editar', 'select-tipocompra-editar', 'select-proveedor-editar',
+                'detalle-ubicacion-editar'].forEach(function (id) {
                 $('#' + id).select2({
                     theme: 'bootstrap-5',
                     dropdownParent: $('body'),
@@ -475,7 +490,8 @@
                     btn.data('codigo'),
                     btn.data('precio'),
                     btn.data('cantidad'),
-                    btn.data('tiene-salidas') == 1
+                    btn.data('tiene-salidas') == 1,
+                    btn.data('id-ubicacion')
                 );
             });
 
@@ -609,32 +625,34 @@
                         let html = '';
                         response.data.detalle.forEach((fila, index) => {
                             html += `
-                                <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${fila.material}</td>
-                                    <td>${fila.unidad}</td>
-                                    <td>${fila.codigo}</td>
-                                    <td class="text-center">${fila.cantidad_inicial}</td>
-                                    <td class="text-right">$${fila.precio}</td>
-                                    <td class="text-center text-nowrap">
-                                        <button type="button"
-                                                class="btn btn-warning btn-xs btn-editar-detalle mr-1"
-                                                data-id="${fila.id}"
-                                                data-material="${fila.material}"
-                                                data-codigo="${fila.codigo}"
-                                                data-precio="${fila.precio_raw}"
-                                                data-cantidad="${fila.cantidad_inicial}"
-                                                data-tiene-salidas="${fila.tiene_salidas}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-danger btn-xs btn-eliminar-detalle"
-                                                data-id="${fila.id}"
-                                                data-material="${fila.material}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>`;
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${fila.ubicacion}</td>
+                            <td>${fila.material}</td>
+                            <td>${fila.unidad}</td>
+                            <td>${fila.codigo}</td>
+                            <td class="text-center">${fila.cantidad_inicial}</td>
+                            <td class="text-right">$${fila.precio}</td>
+                            <td class="text-center text-nowrap">
+                                <button type="button"
+                                        class="btn btn-warning btn-xs btn-editar-detalle mr-1"
+                                        data-id="${fila.id}"
+                                        data-material="${fila.material}"
+                                        data-codigo="${fila.codigo}"
+                                        data-precio="${fila.precio_raw}"
+                                        data-cantidad="${fila.cantidad_inicial}"
+                                        data-tiene-salidas="${fila.tiene_salidas}"
+                                        data-id-ubicacion="${fila.id_ubicacion ?? ''}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button"
+                                        class="btn btn-danger btn-xs btn-eliminar-detalle"
+                                        data-id="${fila.id}"
+                                        data-material="${fila.material}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>`;
                         });
                         $('#detalle-tbody').html(html);
                         $('#detalle-contenido').show();
@@ -656,13 +674,14 @@
         }
 
         // ── Editar detalle ────────────────────────────────────────
-        function modalEditarDetalle(id, material, codigo, precio, cantidad, tieneSalidas) {
+        function modalEditarDetalle(id, material, codigo, precio, cantidad, tieneSalidas, idUbicacion) {
             document.getElementById('formulario-editar-detalle').reset();
             $('#detalle-id-editar').val(id);
             $('#detalle-material-editar').val(material);
             $('#detalle-codigo-editar').val(codigo);
             $('#detalle-precio-editar').val(precio);
             $('#detalle-cantidad-editar').val(cantidad);
+            $('#detalle-ubicacion-editar').val(idUbicacion || '').trigger('change');
 
             if (tieneSalidas) {
                 $('#detalle-cantidad-editar').prop('disabled', true);
@@ -676,12 +695,16 @@
         }
 
         function editarDetalle() {
-            const id       = $('#detalle-id-editar').val();
-            const codigo   = $('#detalle-codigo-editar').val().trim();
-            const precio   = $('#detalle-precio-editar').val().trim();
-            const cantidad = $('#detalle-cantidad-editar').val();
-            const disabled = $('#detalle-cantidad-editar').prop('disabled');
+            const id          = $('#detalle-id-editar').val();
+            const codigo      = $('#detalle-codigo-editar').val().trim();
+            const precio      = $('#detalle-precio-editar').val().trim();
+            const cantidad    = $('#detalle-cantidad-editar').val();
+            const disabled    = $('#detalle-cantidad-editar').prop('disabled');
+            const idUbicacion = $('#detalle-ubicacion-editar').val();
 
+            if (!idUbicacion) {
+                toastr.error('Seleccione la ubicación'); return;
+            }
             if (precio === '' || isNaN(precio) || parseFloat(precio) < 0) {
                 toastr.error('Precio inválido'); return;
             }
@@ -691,9 +714,10 @@
 
             openLoading();
             const formData = new FormData();
-            formData.append('id',     id);
-            formData.append('codigo', codigo);
-            formData.append('precio', precio);
+            formData.append('id',           id);
+            formData.append('codigo',       codigo);
+            formData.append('precio',       precio);
+            formData.append('id_ubicacion', idUbicacion);
             if (!disabled) {
                 formData.append('cantidad', cantidad);
             }

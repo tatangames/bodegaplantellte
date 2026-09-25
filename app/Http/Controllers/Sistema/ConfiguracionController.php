@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Sistema;
 use App\Http\Controllers\Controller;
 use App\Models\Cuenta;
 use App\Models\Departamentos;
+use App\Models\EntradasDetalle;
 use App\Models\Equipos;
 use App\Models\ObjetoEspecifico;
 use App\Models\Proveedor;
 use App\Models\Rubro;
+use App\Models\Ubicaciones;
 use App\Models\UnidadMedida;
 use Database\Seeders\EquiposSeeder;
 use Illuminate\Http\Request;
@@ -164,8 +166,111 @@ class ConfiguracionController extends Controller
 
 
 
+    //********* UBICACIONES **************************************************************
 
 
+    public function indexUbicaciones(){
+        return view('backend.admin.configuracion.ubicaciones.vistaubicaciones');
+    }
+
+    public function tablaUbicaciones(){
+
+        $lista = Ubicaciones::orderBy('nombre', 'ASC')->get();
+        return view('backend.admin.configuracion.ubicaciones.tablaubicaciones', compact('lista'));
+    }
+
+    public function nuevaUbicaciones(Request $request){
+        $regla = array(
+            'nombre' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        $dato = new Ubicaciones();
+        $dato->nombre = $request->nombre;
+
+        if($dato->save()){
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function informacionUbicaciones(Request $request){
+        $regla = array(
+            'id' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if($lista = Ubicaciones::where('id', $request->id)->first()){
+
+            return ['success' => 1, 'info' => $lista];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function editarUbicaciones(Request $request){
+
+        $regla = array(
+            'id' => 'required',
+            'nombre' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if(Ubicaciones::where('id', $request->id)->first()){
+
+            Ubicaciones::where('id', $request->id)->update([
+                'nombre' => $request->nombre
+            ]);
+
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+
+    public function borrarUbicaciones(Request $request)
+    {
+        $regla = array(
+            'id' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()) { return ['success' => 0]; }
+
+        $ubicacion = Ubicaciones::find($request->id);
+
+        if (!$ubicacion) {
+            return ['success' => 2, 'msg' => 'La ubicación no existe.'];
+        }
+
+        // Verificar si tiene relación con entradas_detalle
+        $tieneRelacion = EntradasDetalle::where('id_ubicaciones', $ubicacion->id)->exists();
+
+        if ($tieneRelacion) {
+            return [
+                'success' => 3,
+                'msg' => 'No se puede eliminar: esta ubicación tiene materiales registrados en entradas.',
+            ];
+        }
+
+        if ($ubicacion->delete()) {
+            return ['success' => 1];
+        }
+
+        return ['success' => 4, 'msg' => 'Error al eliminar.'];
+    }
 
 
     //********* RUBRO **************************************************************

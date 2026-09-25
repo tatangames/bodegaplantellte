@@ -221,6 +221,21 @@
                                     </table>
                                 </div>
 
+                                {{-- Ubicación (obligatoria) --}}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Ubicación <span class="text-danger">*</span></label>
+                                            <select class="form-control" id="select-ubicacion" style="width:100%">
+                                                <option value="">Seleccione...</option>
+                                                @foreach($arrayUbicaciones as $ubi)
+                                                    <option value="{{ $ubi->id }}">{{ $ubi->nombre }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="form-group">
@@ -289,18 +304,19 @@
                                 <thead>
                                 <tr>
                                     <th style="width:5%">#</th>
-                                    <th style="width:33%">Material</th>
-                                    <th style="width:10%">Cantidad</th>
-                                    <th style="width:13%">Detalle</th>
-                                    <th style="width:12%">Precio Unit.</th>
-                                    <th style="width:12%">Subtotal</th>
-                                    <th style="width:15%">Opciones</th>
+                                    <th style="width:24%">Material</th>
+                                    <th style="width:15%">Ubicación</th>
+                                    <th style="width:9%">Cantidad</th>
+                                    <th style="width:11%">Detalle</th>
+                                    <th style="width:11%">Precio Unit.</th>
+                                    <th style="width:11%">Subtotal</th>
+                                    <th style="width:14%">Opciones</th>
                                 </tr>
                                 </thead>
                                 <tbody></tbody>
                                 <tfoot>
                                 <tr id="fila-total">
-                                    <td colspan="5" class="text-right">TOTAL GENERAL:</td>
+                                    <td colspan="6" class="text-right">TOTAL GENERAL:</td>
                                     <td id="total-general" class="text-success">$0.00</td>
                                     <td></td>
                                 </tr>
@@ -348,7 +364,7 @@
             document.getElementById('fecha').value = hoy.toJSON().slice(0, 10);
 
             // Select2 con body como padre (fix zoom)
-            ['select-tipoentrada', 'select-tipocompra', 'select-proveedor'].forEach(function (id) {
+            ['select-tipoentrada', 'select-tipocompra', 'select-proveedor', 'select-ubicacion'].forEach(function (id) {
                 $('#' + id).select2({
                     theme: 'bootstrap-5',
                     dropdownParent: $('body'),
@@ -394,23 +410,31 @@
             document.getElementById('formulario-repuesto').reset();
             document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0').attr('data-nombre', '');
+            $('#select-ubicacion').val('').trigger('change');
             $('#modalRepuesto').modal({ backdrop: 'static', keyboard: false });
         }
 
         // ── Agregar fila a tabla ──────────────────────────────────────
         function agregarFila() {
-            var repuesto   = document.getElementById('repuesto');
-            var idMaterial = repuesto.dataset.info;
-            var nombreMat  = repuesto.dataset.nombre || repuesto.value.trim();
-            var cantidad   = document.getElementById('cantidad').value;
-            var codigo     = document.getElementById('codigo').value;
-            var precio     = document.getElementById('precio-producto').value;
+            var repuesto     = document.getElementById('repuesto');
+            var idMaterial   = repuesto.dataset.info;
+            var nombreMat    = repuesto.dataset.nombre || repuesto.value.trim();
+            var cantidad     = document.getElementById('cantidad').value;
+            var codigo       = document.getElementById('codigo').value;
+            var precio       = document.getElementById('precio-producto').value;
+
+            var selectUbi    = document.getElementById('select-ubicacion');
+            var idUbicacion  = selectUbi.value;
+            var nombreUbi    = idUbicacion ? selectUbi.options[selectUbi.selectedIndex].text : '';
 
             var reglaEntero  = /^[0-9]\d*$/;
             var reglaDecimal = /^([0-9]+\.?[0-9]{0,4})$/;
 
             if (idMaterial == 0 || idMaterial === '') {
                 toastr.error('Seleccione un material de la lista'); return;
+            }
+            if (!idUbicacion) {
+                toastr.error('Seleccione la ubicación del material'); return;
             }
             if (cantidad === '' || !cantidad.match(reglaEntero) || parseInt(cantidad) <= 0) {
                 toastr.error('Cantidad debe ser un entero mayor a 0'); return;
@@ -435,6 +459,11 @@
                         <input name="descripcionArray[]" type="hidden"
                                data-info="${idMaterial}" data-nombre="${nombreMat}">
                         ${nombreMat}
+                    </td>
+                    <td>
+                        <input name="ubicacionArray[]" type="hidden"
+                               data-info="${idUbicacion}" value="${idUbicacion}">
+                        ${nombreUbi}
                     </td>
                     <td>
                         <input name="cantidadArray[]" type="hidden" value="${cantidad}">
@@ -468,6 +497,7 @@
             document.getElementById('formulario-repuesto').reset();
             document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0').attr('data-nombre', '');
+            $('#select-ubicacion').val('').trigger('change');
         }
 
         // ── Borrar fila ───────────────────────────────────────────────
@@ -550,6 +580,7 @@
 
                 var idMaterial   = $(this).find('input[name="descripcionArray[]"]').attr('data-info');
                 var nombre       = $(this).find('input[name="descripcionArray[]"]').attr('data-nombre');
+                var idUbicacion  = $(this).find('input[name="ubicacionArray[]"]').attr('data-info');
                 var infoCantidad = $(this).find('input[name="cantidadArray[]"]').val();
                 var infoCodigo   = $(this).find('input[name="codigoArray[]"]').val();
                 var infoPrecio   = $(this).find('input[name="arrayPrecio[]"]').val();
@@ -557,6 +588,11 @@
                 if (!idMaterial || idMaterial == 0) {
                     colorRojoTabla(i);
                     toastr.error('Fila #' + (i + 1) + ': material inválido');
+                    valido = false; return;
+                }
+                if (!idUbicacion || idUbicacion == 0) {
+                    colorRojoTabla(i);
+                    toastr.error('Fila #' + (i + 1) + ': ubicación inválida');
                     valido = false; return;
                 }
                 if (!infoCantidad.match(reglaEntero) || parseInt(infoCantidad) <= 0) {
@@ -570,7 +606,7 @@
                     valido = false; return;
                 }
 
-                contenedorArray.push({ idMaterial, infoNombre: nombre, infoCantidad, infoCodigo, infoPrecio });
+                contenedorArray.push({ idMaterial, infoNombre: nombre, idUbicacion, infoCantidad, infoCodigo, infoPrecio });
             });
 
             if (!valido) return;

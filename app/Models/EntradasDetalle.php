@@ -14,6 +14,7 @@ class EntradasDetalle extends Model
     protected $fillable = [
         'id_entradas',
         'id_material',
+        'id_ubicaciones',
         'cantidad_inicial',
         'precio',
         'codigo'
@@ -28,5 +29,9 @@ class EntradasDetalle extends Model
     public function entrada()
     {
         return $this->belongsTo(Entradas::class, 'id_entradas');
+    }
+
+    public function ubicacion() {
+        return $this->belongsTo(Ubicaciones::class, 'id_ubicaciones');
     }
 }

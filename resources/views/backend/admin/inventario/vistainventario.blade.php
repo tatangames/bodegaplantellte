@@ -274,7 +274,7 @@
 
     </div>
 
-    {{-- ══ Modal Proyectos ══ --}}
+    {{-- ══ Modal Proyectos (totales generales) ══ --}}
     <div class="modal fade" id="modalProyectos" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-md" role="document">
             <div class="modal-content">
@@ -315,6 +315,53 @@
             </div>
         </div>
     </div>
+
+
+    {{-- ══ Modal Ubicaciones (desglose por ubicación) ══ --}}
+    <div class="modal fade" id="modalUbicaciones" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary">
+                    <h5 class="modal-title text-white">
+                        <i class="fas fa-map-marker-alt mr-2"></i>
+                        Ubicaciones — <span id="ubicacion-material"></span>
+                        <span class="badge badge-light ml-2" id="ubicacion-unidad"></span>
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="ubicacion-loading" class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    </div>
+                    <div id="ubicacion-contenido" style="display:none;">
+                        <table class="table table-bordered table-sm mb-0">
+                            <thead class="thead-dark">
+                            <tr>
+                                <th style="width: 10%">Fecha de Ingreso</th>
+                                <th style="width: 25%">Ubicación</th>
+                                <th style="width: 10%" class="text-center">Entradas</th>
+                                <th style="width: 10%" class="text-center">Salidas</th>
+                                <th style="width: 10%" class="text-center">Disponible</th>
+                            </tr>
+                            </thead>
+                            <tbody id="ubicacion-tbody"></tbody>
+                            <tfoot id="ubicacion-tfoot" class="font-weight-bold bg-light"></tfoot>
+                        </table>
+                    </div>
+                    <div id="ubicacion-vacio" class="text-center text-muted py-4" style="display:none;">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>Este material no tiene existencias registradas por ubicación.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
 @stop
 
@@ -588,7 +635,7 @@
             }, 10);
         }
 
-        // ── Ver inventario ────────────────────────────────────────────────────
+        // ── Ver inventario (totales generales, si se sigue usando en otro lado) ─
         function verInventario(id, nombre) {
             $('#proyectos-material').text(nombre);
             $('#proyectos-tbody').html('');
@@ -633,6 +680,72 @@
                     toastr.error('Error al cargar la distribución');
                 });
         }
+
+
+        // ── Ver ubicaciones (desglose por ubicación) ─────────────────────────
+        function verUbicaciones(id, nombre) {
+            $('#ubicacion-material').text(nombre);
+            $('#ubicacion-unidad').text('');
+            $('#ubicacion-tbody').html('');
+            $('#ubicacion-tfoot').html('');
+            $('#ubicacion-contenido').hide();
+            $('#ubicacion-vacio').hide();
+            $('#ubicacion-loading').show();
+            $('#modalUbicaciones').modal('show');
+
+            axios.post(urlAdmin + '/admin/inventario/ubicaciones', { id: id })
+                .then((response) => {
+                    $('#ubicacion-loading').hide();
+
+                    if (response.data.success === 1 && response.data.ubicaciones.length > 0) {
+                        var unidad = response.data.material.unidad;
+                        $('#ubicacion-unidad').text(unidad);
+
+                        var filas = '';
+                        var totEntradas = 0, totSalidas = 0, totDisponible = 0;
+
+                        response.data.ubicaciones.forEach(function (u) {
+                            totEntradas   += u.entradas;
+                            totSalidas    += u.salidas;
+                            totDisponible += u.disponible;
+
+                            filas += `
+                        <tr>
+                            <td>${u.fecha}</td>
+                            <td>${u.ubicacion}</td>
+                            <td class="text-center">${u.entradas}</td>
+                            <td class="text-center">${u.salidas}</td>
+                            <td class="text-center">
+                                <strong class="${u.disponible > 0 ? 'text-success' : 'text-danger'}">
+                                    ${u.disponible}
+                                </strong>
+                            </td>
+                        </tr>`;
+                        });
+
+                        $('#ubicacion-tbody').html(filas);
+                        $('#ubicacion-tfoot').html(`
+                    <tr>
+                        <td colspan="2" class="text-right">TOTAL</td>
+                        <td class="text-center">${totEntradas}</td>
+                        <td class="text-center">${totSalidas}</td>
+                        <td class="text-center">${totDisponible}</td>
+                    </tr>
+                `);
+
+                        $('#ubicacion-contenido').show();
+                    } else {
+                        $('#ubicacion-vacio').show();
+                    }
+                })
+                .catch(() => {
+                    $('#ubicacion-loading').hide();
+                    $('#ubicacion-vacio').show();
+                    toastr.error('Error al cargar las ubicaciones');
+                });
+        }
+
+
 
     </script>
 @endsection

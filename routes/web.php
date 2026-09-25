@@ -65,6 +65,15 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/equipos/informacion', [ConfiguracionController::class, 'informacionEquipos']);
     Route::post('/admin/equipos/editar', [ConfiguracionController::class, 'editarEquipos']);
 
+    // --- UBICACIONES ---
+    Route::get('/admin/ubicaciones/index', [ConfiguracionController::class,'indexUbicaciones'])->name('admin.ubicaciones.index');
+    Route::get('/admin/ubicaciones/tabla/index', [ConfiguracionController::class,'tablaUbicaciones']);
+    Route::post('/admin/ubicaciones/nuevo', [ConfiguracionController::class, 'nuevaUbicaciones']);
+    Route::post('/admin/ubicaciones/informacion', [ConfiguracionController::class, 'informacionUbicaciones']);
+    Route::post('/admin/ubicaciones/editar', [ConfiguracionController::class, 'editarUbicaciones']);
+    Route::post('admin/ubicaciones/borrar', [ConfiguracionController::class, 'borrarUbicaciones'])->name('admin.ubicaciones.borrar');
+
+
     // --- RUBRO ---
     Route::get('/admin/rubro/index', [ConfiguracionController::class,'indexRubro'])->name('admin.rubro.index');
     Route::get('/admin/rubro/tabla/index', [ConfiguracionController::class,'tablaRubro']);
@@ -93,6 +102,7 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/inventario/informacion', [RepuestosController::class, 'informacionMaterial']);
     Route::post('/admin/inventario/editar', [RepuestosController::class, 'editarMaterial']);
     Route::post('/admin/inventario/catalogo', [RepuestosController::class, 'inventarioConteoDeMateriales']);
+    Route::post('admin/inventario/ubicaciones', [RepuestosController::class, 'materialUbicaciones'])->name('admin.inventario.ubicaciones');
 
 
     // --- PROVEEDOR ---

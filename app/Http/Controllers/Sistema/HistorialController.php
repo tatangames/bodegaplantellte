@@ -9,14 +9,11 @@ use App\Models\Equipos;
 use App\Models\InformacionGeneral;
 use App\Models\Materiales;
 use App\Models\Proveedor;
-use App\Models\Reserva;
 use App\Models\Salidas;
 use App\Models\SalidasDetalle;
 use App\Models\TipoCompra;
 use App\Models\TipoEntrada;
-use App\Models\TipoProyecto;
-use App\Models\Transferencia;
-use App\Models\TransferenciaDetalle;
+use App\Models\Ubicaciones;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,9 +28,10 @@ class HistorialController extends Controller
         $arrayTipoEntrada = TipoEntrada::orderBy('nombre')->get();
         $arrayTipoCompra  = TipoCompra::orderBy('nombre')->get();
         $arrayProveedor   = Proveedor::orderBy('nombre')->get();
+        $arrayUbicaciones = Ubicaciones::orderBy('nombre')->get();
 
         return view('backend.admin.historial.entradas.vistahistorialentradas',
-            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor'));
+            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor', 'arrayUbicaciones'));
     }
 
     public function tablaHistorialEntradas(Request $request)
@@ -143,6 +141,7 @@ class HistorialController extends Controller
         }
     }
 
+
     public function detalleEntrada(Request $request)
     {
         $entrada = Entradas::find($request->id);
@@ -152,7 +151,7 @@ class HistorialController extends Controller
         }
 
         $detalle = $entrada->detalle()
-            ->with('material.unidadMedida')
+            ->with(['material.unidadMedida', 'ubicacion'])
             ->get()
             ->map(function ($item) {
                 $tieneSalidas = SalidasDetalle::where('id_entrada_detalle', $item->id)->exists();
@@ -162,6 +161,8 @@ class HistorialController extends Controller
                     'nombre'           => $item->nombre ?? '',
                     'material'         => $item->material->nombre ?? '',
                     'unidad'           => $item->material->unidadMedida->nombre ?? '',
+                    'id_ubicacion'     => $item->id_ubicaciones,
+                    'ubicacion'        => $item->ubicacion->nombre ?? 'Sin ubicación',
                     'cantidad_inicial' => $item->cantidad_inicial,
                     'precio'           => number_format($item->precio, 4),
                     'precio_raw'       => $item->precio,
@@ -175,6 +176,7 @@ class HistorialController extends Controller
         ]);
     }
 
+
     public function editarDetalleEntrada(Request $request)
     {
         $detalle = EntradasDetalle::find($request->id);
@@ -185,6 +187,10 @@ class HistorialController extends Controller
 
         $detalle->codigo = $request->codigo ?: null;
         $detalle->precio = $request->precio;
+
+        if ($request->filled('id_ubicacion')) {
+            $detalle->id_ubicaciones = $request->id_ubicacion;
+        }
 
         // Actualizar cantidad solo si no tiene salidas
         if ($request->filled('cantidad')) {
@@ -202,6 +208,7 @@ class HistorialController extends Controller
 
         return response()->json(['success' => 1]);
     }
+
 
     public function eliminarDetalleEntrada(Request $request)
     {
@@ -248,8 +255,9 @@ class HistorialController extends Controller
     public function vistaExtrasEntrada($id)
     {
         $entrada = Entradas::with(['tipoEntrada', 'tipoCompra', 'proveedor'])->find($id);
+        $arrayUbicaciones = Ubicaciones::orderBy('nombre')->get();
 
-        return view('backend.admin.historial.entradas.vistaextras', compact('entrada'));
+        return view('backend.admin.historial.entradas.vistaextras', compact('entrada', 'arrayUbicaciones'));
     }
 
     public function guardarExtrasEntrada(Request $request)
@@ -270,6 +278,7 @@ class HistorialController extends Controller
             EntradasDetalle::create([
                 'id_entradas'      => $entrada->id,
                 'id_material'      => $item['idMaterial'],
+                'id_ubicaciones'   => $item['idUbicacion'],
                 'cantidad_inicial' => $item['infoCantidad'],
                 'codigo'           => $item['infoCodigo'] ?: null,
                 'precio'           => $item['infoPrecio'],

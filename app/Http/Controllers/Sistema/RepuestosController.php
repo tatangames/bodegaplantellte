@@ -17,6 +17,7 @@ use App\Models\SalidasDetalle;
 use App\Models\TipoCompra;
 use App\Models\TipoEntrada;
 use App\Models\TipoProyecto;
+use App\Models\Ubicaciones;
 use App\Models\UnidadMedida;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -141,9 +142,10 @@ class RepuestosController extends Controller
         $arrayTipoEntrada = TipoEntrada::orderBy('nombre')->get();
         $arrayTipoCompra  = TipoCompra::orderBy('nombre')->get();
         $arrayProveedor   = Proveedor::orderBy('nombre')->get();
+        $arrayUbicaciones = Ubicaciones::orderBy('nombre')->get();
 
         return view('backend.admin.repuestos.registros.vistaentradaregistro',
-            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor'));
+            compact('arrayTipoEntrada', 'arrayTipoCompra', 'arrayProveedor', 'arrayUbicaciones'));
     }
 
 
@@ -197,7 +199,6 @@ class RepuestosController extends Controller
     // GUARDAR ENTRADAS
     public function guardarEntrada(Request $request)
     {
-
         $validator = Validator::make($request->all(), [
             'fecha'        => 'required|date',
             'tipoentrada'  => 'required',
@@ -232,6 +233,7 @@ class RepuestosController extends Controller
                 $detalle = new EntradasDetalle();
                 $detalle->id_entradas      = $entrada->id;
                 $detalle->id_material      = $fila['idMaterial'];
+                $detalle->id_ubicaciones   = $fila['idUbicacion'];
                 $detalle->cantidad_inicial = $fila['infoCantidad'];
                 $detalle->precio           = $fila['infoPrecio'];
                 $detalle->codigo           = $fila['infoCodigo'];
@@ -280,53 +282,78 @@ class RepuestosController extends Controller
 
 
 
-
-
-
-    //*******************************************
-
-    public function vistaDetalleMaterial($id){
-
-        $infomaterial = Materiales::where('id', $id)->first();
-        $medida = '';
-        if($infoMedida = UnidadMedida::where('id', $infomaterial->id_medida)->first()){
-            $medida = $infoMedida->nombre;
+    public function materialUbicaciones(Request $request)
+    {
+        $validar = Validator::make($request->all(), ['id' => 'required']);
+        if ($validar->fails()) {
+            return ['success' => 0];
         }
 
-        return view('backend.admin.inventario.detalle.vistadetalle', compact('id', 'infomaterial', 'medida'));
-    }
+        $idMaterial = $request->id;
 
-
-    public function tablaDetalleMaterial($id){
-
-        // SOLO HABRA 1 MATERIAL POR CADA PROYECTO
-        $arrayEntradas =  Entradas::where('id_material', $id)->get();
-
-        $pilaArrayEntrada = array();
-
-
-        foreach ($arrayEntradas as $data){
-
-            // VERIFICAR QUE LA CANTIDAD SEA MAYOR A 0 PARA PODER
-            // MOSTRARLO
-            if($data->cantidad > 0){
-                array_push($pilaArrayEntrada, $data->id);
-            }
+        // Datos del material (nombre + unidad de medida)
+        $material = Materiales::find($idMaterial);
+        if (!$material) {
+            return ['success' => 0];
         }
 
-        $lista = Entradas::whereIn('id', $pilaArrayEntrada)
-            ->orderBy('id_tipoproyecto', 'ASC')
+        $unidad = UnidadMedida::where('id', $material->id_medida)->first();
+
+        // Entradas agrupadas por fecha + ubicación (LEFT JOIN para incluir las que no tienen ubicación)
+        $entradasPorUbicacion = DB::table('entradas_detalle as ed')
+            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->leftJoin('ubicaciones as u', 'u.id', '=', 'ed.id_ubicaciones')
+            ->where('ed.id_material', $idMaterial)
+            ->select(
+                'e.fecha as fecha',
+                'ed.id_ubicaciones as id_ubicacion',
+                DB::raw("COALESCE(u.nombre, 'Sin ubicación asignada') as ubicacion"),
+                DB::raw('SUM(ed.cantidad_inicial) as entradas')
+            )
+            ->groupBy('e.fecha', 'ed.id_ubicaciones', 'u.nombre')
+            ->orderBy('e.fecha', 'desc')
             ->get();
 
-        foreach ($lista as $info){
-            // OBTENER NOMBRE DE PROYECTO
+        // Salidas agrupadas por fecha + ubicación de la entrada relacionada (puede ser null)
+        $salidasPorUbicacion = DB::table('salidas_detalle as sd')
+            ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')
+            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->where('ed.id_material', $idMaterial)
+            ->select('e.fecha as fecha', 'ed.id_ubicaciones as id_ubicacion', DB::raw('SUM(sd.cantidad_salida) as salidas'))
+            ->groupBy('e.fecha', 'ed.id_ubicaciones')
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->fecha . '_' . ($item->id_ubicacion ?? 'sin_ubicacion');
+            });
 
-            $infoProyecto = TipoProyecto::where('id', $info->id_tipoproyecto)->first();
-            $info->nombrepro = $infoProyecto->nombre;
+        $resultado = [];
+
+        foreach ($entradasPorUbicacion as $fila) {
+            $clave   = $fila->fecha . '_' . ($fila->id_ubicacion ?? 'sin_ubicacion');
+            $salidas = $salidasPorUbicacion->get($clave)->salidas ?? 0;
+
+            $resultado[] = [
+                'fecha'        => date('d/m/Y', strtotime($fila->fecha)),
+                'id_ubicacion' => $fila->id_ubicacion,
+                'ubicacion'    => $fila->ubicacion,
+                'entradas'     => (int) $fila->entradas,
+                'salidas'      => (int) $salidas,
+                'disponible'   => (int) $fila->entradas - (int) $salidas,
+            ];
         }
 
-        return view('backend.admin.inventario.detalle.tabladetallematerial', compact('lista'));
+        return response()->json([
+            'success'     => 1,
+            'material'    => [
+                'nombre' => $material->nombre,
+                'unidad' => $unidad->nombre ?? 'Sin unidad',
+            ],
+            'ubicaciones' => $resultado,
+        ]);
     }
+
+
+
 
 
 }

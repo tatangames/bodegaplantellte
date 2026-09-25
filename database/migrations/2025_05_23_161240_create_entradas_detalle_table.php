@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->bigInteger('id_entradas')->unsigned();
             $table->bigInteger('id_material')->unsigned();
+            $table->bigInteger('id_ubicaciones')->unsigned()->nullable();
 
             // La cantidad registrada que no cambia
             $table->integer('cantidad_inicial');
@@ -30,6 +31,7 @@ return new class extends Migration
 
             $table->foreign('id_entradas')->references('id')->on('entradas');
             $table->foreign('id_material')->references('id')->on('materiales');
+            $table->foreign('id_ubicaciones')->references('id')->on('ubicaciones');
         });
     }
 

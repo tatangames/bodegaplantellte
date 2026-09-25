@@ -11,6 +11,8 @@
 
 @section('content_top_nav_right')
     <link href="{{ asset('css/toastr.min.css') }}" type="text/css" rel="stylesheet"/>
+    <link href="{{ asset('css/select2.min.css') }}" type="text/css" rel="stylesheet">
+    <link href="{{ asset('css/select2-bootstrap-5-theme.min.css') }}" type="text/css" rel="stylesheet">
     <li class="nav-item dropdown">
         <a href="#" class="nav-link" data-toggle="dropdown">
             <i class="fas fa-cogs"></i>
@@ -42,6 +44,48 @@
             font-weight: bold;
             background-color: #f4f6f9;
             font-size: 1.05rem;
+        }
+
+        /* ══ Fix Select2 + modal zoom ══════════════════════════════════════════ */
+        .select2-container--open,
+        .select2-dropdown,
+        .select2-dropdown--below,
+        .select2-dropdown--above { z-index: 99999 !important; }
+        .select2-dropdown { box-sizing: border-box !important; }
+
+        .modal .select2-container--bootstrap-5 .select2-selection { min-height: 38px !important; }
+        .modal .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+            display: flex !important; align-items: center !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding: 0 !important; line-height: 1.5 !important; color: #212529 !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 36px !important; top: 1px !important; right: 6px !important;
+        }
+        .select2-search--dropdown { padding: 8px !important; }
+        .select2-search--dropdown .select2-search__field {
+            width: 100% !important; padding: 6px 10px !important;
+            border: 1px solid #ced4da !important; border-radius: 4px !important;
+            font-size: 13px !important; box-sizing: border-box !important;
+            pointer-events: auto !important; user-select: text !important;
+            -webkit-user-select: text !important; cursor: text !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+            outline: none !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option {
+            font-size: 13px !important; padding: 6px 12px !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #3b82f6 !important; color: #fff !important;
         }
     </style>
 @stop
@@ -128,6 +172,21 @@
                                     </table>
                                 </div>
 
+                                {{-- Ubicación (obligatoria) --}}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Ubicación <span style="color:red">*</span></label>
+                                            <select class="form-control" id="select-ubicacion" style="width:100%">
+                                                <option value="">Seleccione...</option>
+                                                @foreach($arrayUbicaciones as $ubi)
+                                                    <option value="{{ $ubi->id }}">{{ $ubi->nombre }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="form-group">
@@ -197,18 +256,19 @@
                                 <thead>
                                 <tr>
                                     <th style="width:4%">#</th>
-                                    <th style="width:30%">Material</th>
-                                    <th style="width:10%">Cantidad</th>
-                                    <th style="width:14%">Marca / Detalle</th>
-                                    <th style="width:13%">Precio Unit.</th>
-                                    <th style="width:13%">Subtotal</th>
-                                    <th style="width:16%">Opciones</th>
+                                    <th style="width:22%">Material</th>
+                                    <th style="width:14%">Ubicación</th>
+                                    <th style="width:9%">Cantidad</th>
+                                    <th style="width:12%">Marca / Detalle</th>
+                                    <th style="width:12%">Precio Unit.</th>
+                                    <th style="width:12%">Subtotal</th>
+                                    <th style="width:15%">Opciones</th>
                                 </tr>
                                 </thead>
                                 <tbody></tbody>
                                 <tfoot>
                                 <tr id="fila-total">
-                                    <td colspan="5" class="text-right">TOTAL GENERAL:</td>
+                                    <td colspan="6" class="text-right">TOTAL GENERAL:</td>
                                     <td id="total-general" class="text-success">$0.0000</td>
                                     <td></td>
                                 </tr>
@@ -234,14 +294,36 @@
     <script src="{{ asset('js/axios.min.js') }}"></script>
     <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
+    <script src="{{ asset('js/select2.min.js') }}" type="text/javascript"></script>
 
     <script>
         const ID_ENTRADA = {{ $entrada->id }};
         window.seguroBuscador      = true;
         window.txtContenedorGlobal = null;
 
+        // ══ Fix Bootstrap _enforceFocus (Select2 zoom) ════════════════
+        if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
+            var __modalProto = $.fn.modal.Constructor.prototype;
+            if (__modalProto._enforceFocus) { __modalProto._enforceFocus = function () {}; }
+            if (__modalProto.enforceFocus)  { __modalProto.enforceFocus  = function () {}; }
+            if (__modalProto._focustrap)    { __modalProto._focustrap = { activate: function(){}, deactivate: function(){} }; }
+        }
+
         $(document).ready(function () {
             $(document).click(function () { $(".droplista").hide(); });
+
+            // Select2 ubicación con body como padre (fix zoom)
+            $('#select-ubicacion').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('body'),
+                language: { noResults: function () { return 'No encontrado'; } },
+                width: '100%'
+            });
+
+            $(document).on('select2:open', function () {
+                var field = document.querySelector('.select2-container--open .select2-search__field');
+                if (field) field.focus();
+            });
 
             // Preview subtotal en tiempo real
             $('#cantidad, #precio-producto').on('input', function () {
@@ -275,23 +357,31 @@
             document.getElementById('formulario-repuesto').reset();
             document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0');
+            $('#select-ubicacion').val('').trigger('change');
             $('#modalRepuesto').modal({ backdrop: 'static', keyboard: false });
         }
 
         // ── Agregar fila ──────────────────────────────────────────────
         function agregarFila() {
-            var repuesto  = document.querySelector('#repuesto');
+            var repuesto     = document.querySelector('#repuesto');
             var nomRepuesto  = repuesto.value.trim();
             var idMaterial   = repuesto.dataset.info;
             var cantidad     = document.getElementById('cantidad').value;
             var codigo       = document.getElementById('codigo').value;
             var precio       = document.getElementById('precio-producto').value;
 
+            var selectUbi    = document.getElementById('select-ubicacion');
+            var idUbicacion  = selectUbi.value;
+            var nombreUbi    = idUbicacion ? selectUbi.options[selectUbi.selectedIndex].text : '';
+
             var reglaEntero  = /^[0-9]\d*$/;
             var reglaDecimal = /^([0-9]+\.?[0-9]{0,4})$/;
 
             if (idMaterial == 0 || idMaterial === '') {
                 toastr.error('Seleccione un material de la lista'); return;
+            }
+            if (!idUbicacion) {
+                toastr.error('Seleccione la ubicación del material'); return;
             }
             if (cantidad === '' || !cantidad.match(reglaEntero) || parseInt(cantidad) <= 0) {
                 toastr.error('Cantidad debe ser un entero mayor a 0'); return;
@@ -316,6 +406,11 @@
                         <input name="descripcionArray[]" type="hidden"
                                data-info="${idMaterial}" value="${nomRepuesto}">
                         ${nomRepuesto}
+                    </td>
+                    <td>
+                        <input name="ubicacionArray[]" type="hidden"
+                               data-info="${idUbicacion}" value="${idUbicacion}">
+                        ${nombreUbi}
                     </td>
                     <td>
                         <input name="cantidadArray[]" type="hidden" value="${cantidad}">
@@ -349,6 +444,7 @@
             document.getElementById('formulario-repuesto').reset();
             document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0');
+            $('#select-ubicacion').val('').trigger('change');
         }
 
         // ── Borrar fila ───────────────────────────────────────────────
@@ -409,6 +505,7 @@
 
         function guardarExtras() {
             var descripcionAtributo = $("input[name='descripcionArray[]']").map(function () { return $(this).attr('data-info'); }).get();
+            var ubicacionAtributo   = $("input[name='ubicacionArray[]']").map(function () { return $(this).attr('data-info'); }).get();
             var cantidad            = $("input[name='cantidadArray[]']").map(function () { return $(this).val(); }).get();
             var codigo              = $("input[name='codigoArray[]']").map(function () { return $(this).val(); }).get();
             var arrayPrecio         = $("input[name='arrayPrecio[]']").map(function () { return $(this).val(); }).get();
@@ -417,6 +514,7 @@
             for (var i = 0; i < cantidad.length; i++) {
                 contenedorArray.push({
                     idMaterial:   descripcionAtributo[i],
+                    idUbicacion:  ubicacionAtributo[i],
                     infoCantidad: cantidad[i],
                     infoCodigo:   codigo[i],
                     infoPrecio:   arrayPrecio[i],

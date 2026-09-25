@@ -32,10 +32,13 @@
                                         @endif
                                     </td>
                                     <td>
-
                                         <button type="button" style="margin: 2px" class="btn btn-primary btn-xs"
                                                 onclick="informacion({{ $dato->id }})">
                                             <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                        <button type="button" style="margin: 2px" class="btn btn-info btn-xs"
+                                                onclick="verUbicaciones({{ $dato->id }}, '{{ addslashes($dato->nombre) }}')">
+                                            <i class="fas fa-map-marker-alt"></i> Ubicación
                                         </button>
                                     </td>
                                 </tr>

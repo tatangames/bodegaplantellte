@@ -412,6 +412,12 @@ return [
                     'route' => 'admin.proveedor.index',
                 ],
 
+                [
+                    'text' => 'Ubicaciones',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.ubicaciones.index',
+                ],
+
             ],
         ],
 
