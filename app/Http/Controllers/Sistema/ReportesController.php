@@ -1989,7 +1989,7 @@ class ReportesController extends Controller
 
         // ── Observaciones ─────────────────────────────────────────────────
         $mpdf->WriteHTML("
-<table width='100%' style='margin-top:12px; border-collapse:collapse; font-family:Arial, sans-serif;'>
+<table width='100%' style='margin-top:25px; border-collapse:collapse; font-family:Arial, sans-serif;'>
     <tr>
         <td style='font-size:11px; font-weight:bold; padding-bottom:4px;'>OBSERVACIONES:</td>
     </tr>
