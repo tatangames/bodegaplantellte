@@ -1725,6 +1725,7 @@ class ReportesController extends Controller
         return $html;
     }
 
+
     private function generarPdfSalida(string $html)
     {
         $mpdf = new \Mpdf\Mpdf([
@@ -1745,5 +1746,240 @@ class ReportesController extends Controller
         $mpdf->Output('salida_bodega_' . date('Ymd_His') . '.pdf', 'I');
     }
 
+
+
+
+
+
+    public function pdfLevantamientoFisico(Request $request)
+    {
+        $fechaHoy     = Carbon::now('America/El_Salvador')->format('d-m-Y');
+        $logoalcaldia = 'images/logo.png';
+
+        // ── Parámetros ────────────────────────────────────────────────────
+        $ids = collect(explode(',', (string) $request->input('materiales', '')))
+            ->map(function ($v) { return (int) trim($v); })
+            ->filter(function ($v) { return $v > 0; })
+            ->unique()
+            ->values()
+            ->all();
+
+        $incluirCero      = (int) $request->input('cero', 0) === 1;
+        $agruparUbicacion = (int) $request->input('agrupar', 1) === 1;
+
+        // ── Stock por material + ubicación (entradas_detalle.id_ubicaciones) ──
+        $subEntradas = DB::table('entradas_detalle')
+            ->select(
+                'id_material',
+                'id_ubicaciones',
+                DB::raw('SUM(cantidad_inicial) AS total_entradas')
+            )
+            ->groupBy('id_material', 'id_ubicaciones');
+
+        $subSalidas = DB::table('salidas_detalle as sd')
+            ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')
+            ->select(
+                'ed.id_material',
+                'ed.id_ubicaciones',
+                DB::raw('SUM(sd.cantidad_salida) AS total_salidas')
+            )
+            ->groupBy('ed.id_material', 'ed.id_ubicaciones');
+
+        $query = DB::table('materiales as m')
+            ->leftJoinSub($subEntradas, 'e', 'e.id_material', '=', 'm.id')
+            ->leftJoinSub($subSalidas, 's', function ($join) {
+                $join->on('s.id_material', '=', 'e.id_material')
+                    ->on('s.id_ubicaciones', '<=>', 'e.id_ubicaciones'); // null-safe (entradas sin ubicación)
+            })
+            ->leftJoin('ubicaciones as u', 'u.id', '=', 'e.id_ubicaciones')
+            ->leftJoin('objeto_especifico as oe', 'oe.id', '=', 'm.id_objespecifico')
+            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
+            ->select(
+                'm.id',
+                'm.nombre',
+                'u.nombre as ubicacion',
+                'oe.codigo as objespec',
+                'um.nombre as medida',
+                DB::raw('COALESCE(e.total_entradas, 0) - COALESCE(s.total_salidas, 0) AS stock_sistema')
+            );
+
+        if (!empty($ids)) {
+            $query->whereIn('m.id', $ids);
+        }
+
+        if ($agruparUbicacion) {
+            $query->orderByRaw("CASE WHEN u.nombre IS NULL OR u.nombre = '' THEN 1 ELSE 0 END")
+                ->orderBy('u.nombre')
+                ->orderBy('m.nombre');
+        } else {
+            $query->orderBy('m.nombre')
+                ->orderBy('u.nombre');
+        }
+
+        $rows = $query->get()->filter(function ($r) use ($incluirCero) {
+            return $incluirCero ? true : ((float) $r->stock_sistema > 0);
+        })->values();
+
+        // ── Etiqueta de materiales ────────────────────────────────────────
+        if (empty($ids)) {
+            $etiquetaMateriales = 'Todos los materiales';
+        } elseif (count($ids) === 1) {
+            $mat = Materiales::find($ids[0]);
+            $etiquetaMateriales = $mat ? e($mat->nombre) : 'Material #' . $ids[0];
+        } else {
+            $etiquetaMateriales = count($ids) . ' materiales seleccionados';
+        }
+
+        // ── Encabezado ────────────────────────────────────────────────────
+        $html = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'><tr>
+                <td style='width:30%; text-align:left;'><img src='{$logoalcaldia}' style='height:38px'></td>
+                <td style='width:70%; text-align:left; color:#104e8c; font-size:13px; font-weight:bold; line-height:1.3;'>SANTA ANA NORTE<br>EL SALVADOR</td>
+            </tr></table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000; padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            LEVANTAMIENTO FÍSICO DE INVENTARIO
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
+                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'><strong>Fecha de vigencia:</strong></td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table><br>
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:8px;'>
+    <tr>
+        <td style='width:15%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px; font-weight:bold; background:#f5f5f5;'>MATERIALES</td>
+        <td style='width:50%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'>{$etiquetaMateriales}</td>
+        <td style='width:15%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px; font-weight:bold; background:#f5f5f5; text-align:center;'>FECHA EMISIÓN</td>
+        <td style='width:20%; border:0.8px solid #ccc; padding:6px 8px; font-size:11px; text-align:center;'>{$fechaHoy}</td>
+    </tr>
+    <tr>
+        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px; font-weight:bold; background:#f5f5f5;'>RESPONSABLE CONTEO</td>
+        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px;'></td>
+        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px; font-weight:bold; background:#f5f5f5; text-align:center;'>FECHA CONTEO</td>
+        <td style='border:0.8px solid #ccc; padding:6px 8px; font-size:11px; text-align:center;'></td>
+    </tr>
+</table>";
+
+        // ── Tabla principal ───────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; border:0.8px solid #aaa;'>
+    <thead>
+        <tr style='background:#4A5568;'>
+            <td style='font-weight:bold; width:4%;  font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748; text-align:center;'>#</td>
+            <td style='font-weight:bold; width:14%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748;'>Ubicación</td>
+            <td style='font-weight:bold; width:10%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748;'>Cod. Presu.</td>
+            <td style='font-weight:bold; width:30%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748;'>Material</td>
+            <td style='font-weight:bold; width:10%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748;'>Medida</td>
+            <td style='font-weight:bold; width:11%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748; text-align:center;'>Stock Sistema</td>
+            <td style='font-weight:bold; width:11%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748; text-align:center;'>Stock Actual</td>
+            <td style='font-weight:bold; width:10%; font-size:10px; color:#fff; padding:5px 4px; border:0.8px solid #2D3748; text-align:center;'>Diferencia</td>
+        </tr>
+    </thead>
+    <tbody>";
+
+        $i            = 1;
+        $ubicacionAct = null;
+        $totalStock   = 0;
+
+        foreach ($rows as $r) {
+            $ubicacion = trim((string) ($r->ubicacion ?? '')) !== '' ? $r->ubicacion : 'SIN UBICACIÓN';
+
+            if ($agruparUbicacion && $ubicacion !== $ubicacionAct) {
+                $html .= "
+        <tr style='background:#e9e3f7;'>
+            <td colspan='8' style='font-weight:bold; font-size:11px; padding:5px 6px; border:0.8px solid #bbb;'>
+                UBICACIÓN: " . e($ubicacion) . "
+            </td>
+        </tr>";
+                $ubicacionAct = $ubicacion;
+            }
+
+            $stock       = (float) $r->stock_sistema;
+            $totalStock += $stock;
+
+            $stockFmt = (floor($stock) == $stock) ? number_format($stock, 0) : number_format($stock, 2);
+
+            $html .= "
+        <tr>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc; text-align:center;'>{$i}</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'>" . e($ubicacion) . "</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'>" . e($r->objespec ?? '—') . "</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'>" . e($r->nombre ?? '') . "</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'>" . e($r->medida ?? '') . "</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc; text-align:center; font-weight:bold;'>{$stockFmt}</td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'></td>
+            <td style='font-size:10px; padding:8px 4px; border:0.8px solid #ccc;'></td>
+        </tr>";
+
+            $i++;
+        }
+
+        if ($rows->isEmpty()) {
+            $html .= "
+        <tr>
+            <td colspan='8' style='text-align:center; font-size:12px; padding:12px; color:#888;'>
+                No hay materiales que coincidan con los filtros seleccionados.
+            </td>
+        </tr>";
+        }
+
+        $totalStockFmt = (floor($totalStock) == $totalStock) ? number_format($totalStock, 0) : number_format($totalStock, 2);
+        $totalItems    = $rows->count();
+
+        $html .= "
+    </tbody>
+</table>
+
+
+
+<table width='100%' style='margin-top:12px; border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='font-size:11px; font-weight:bold; padding-bottom:4px;'>OBSERVACIONES:</td>
+    </tr>
+    <tr><td style='border-bottom:0.8px solid #000; height:30px;'></td></tr>
+    <tr><td style='border-bottom:0.8px solid #000; height:30px;'></td></tr>
+    <tr><td style='border-bottom:0.8px solid #000; height:30px;'></td></tr>
+</table>";
+
+        // ── Firmas ────────────────────────────────────────────────────────
+        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
+        $margenFirma = (int)  ($informacionGeneral->px_firmas ?? 40);
+        $saltoPagina = (bool) ($informacionGeneral->salto_pagina ?? false);
+        $estiloSalto = $saltoPagina ? "page-break-before: always;" : "";
+
+
+        // ── mPDF ──────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'       => sys_get_temp_dir(),
+            'format'        => 'LETTER',
+            'margin_top'    => 15,
+            'margin_bottom' => 15,
+            'margin_left'   => 12,
+            'margin_right'  => 12,
+        ]);
+        $mpdf->SetTitle('Levantamiento Físico de Inventario');
+        $mpdf->showImageErrors = false;
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter('Página: {PAGENO}/{nb}');
+        $mpdf->WriteHTML($html, 2);
+        $mpdf->Output('levantamiento_fisico_' . date('Ymd_His') . '.pdf', 'I');
+    }
 
 }

@@ -169,6 +169,7 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/bodega/reportespdf/inicial/final/{desde}/{hasta}', [ReportesController::class, 'reportePDFInicialPorPeriodos']);
 
 
+    Route::get('/admin/reporte/levantamiento/pdf', [ReportesController::class, 'pdfLevantamientoFisico'])->name('admin.reporte.levantamiento.pdf');
 
 
 }); // end auth

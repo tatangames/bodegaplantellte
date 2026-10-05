@@ -43,6 +43,7 @@
         .reporte-header { padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
         .reporte-header.entradas { background: linear-gradient(135deg, #1a6b2a, #28a745); }
         .reporte-header.salidas  { background: linear-gradient(135deg, #6b1a1a, #dc3545); }
+        .reporte-header.levantamiento { background: linear-gradient(135deg, #3d1a6b, #7b3fe4); }
         .reporte-header i  { font-size: 22px; color: #fff; }
         .reporte-header h5 {
             color: #fff; font-size: 14px; font-weight: 700;
@@ -63,6 +64,7 @@
         }
         .btn-pdf.verde { background: linear-gradient(135deg, #1a6b2a, #28a745); color: #fff; box-shadow: 0 4px 14px rgba(40,167,69,.35); }
         .btn-pdf.rojo  { background: linear-gradient(135deg, #6b1a1a, #dc3545); color: #fff; box-shadow: 0 4px 14px rgba(220,53,69,.35); }
+        .btn-pdf.morado { background: linear-gradient(135deg, #3d1a6b, #7b3fe4); color: #fff; box-shadow: 0 4px 14px rgba(123,63,228,.35); }
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
         .fecha-row { display: flex; gap: 14px; margin-bottom: 14px; }
         .fecha-box { flex: 1; }
@@ -84,6 +86,9 @@
             font-size: 12px; font-weight: 700; color: #6b4a1a;
             text-transform: uppercase; letter-spacing: .05em; margin-bottom: 14px;
         }
+        .lev-acciones { display: flex; gap: 8px; margin-top: 6px; }
+        .lev-acciones .btn { font-size: 12px; padding: 3px 10px; }
+        .lev-contador { font-size: 12px; color: #6b7a99; margin-top: 6px; }
     </style>
 
     <section class="content">
@@ -198,6 +203,54 @@
                                 </div>
                             </div>
 
+                        </div>
+                    </div>
+
+                    {{-- ══ LEVANTAMIENTO FÍSICO DE INVENTARIO ══ --}}
+                    <div class="reporte-card">
+                        <div class="reporte-header levantamiento">
+                            <i class="fas fa-clipboard-check"></i>
+                            <h5>Levantamiento Físico de Inventario</h5>
+                        </div>
+                        <div class="reporte-body">
+                            <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                Hoja de conteo con la ubicación de cada material. Incluye stock del sistema y
+                                columnas en blanco para anotar el stock actual y la diferencia.
+                            </p>
+                            <hr class="divider">
+
+                            <label class="field-label">Materiales <small class="text-muted" style="text-transform:none;">(vacío = todos)</small></label>
+                            <select class="form-control" id="lev-materiales" multiple="multiple" style="width:100%">
+                                @foreach($materiales as $mat)
+                                    <option value="{{ $mat->id }}">{{ $mat->nombre }}</option>
+                                @endforeach
+                            </select>
+
+                            <div class="lev-acciones">
+                                <button type="button" class="btn btn-outline-secondary" onclick="limpiarLevantamiento()">
+                                    <i class="fas fa-eraser mr-1"></i> Limpiar selección
+                                </button>
+                            </div>
+                            <div class="lev-contador" id="lev-contador">Se incluirán todos los materiales</div>
+
+                            <div class="mt-3">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="lev-agrupar" checked>
+                                    <label class="custom-control-label" for="lev-agrupar" style="font-size:13px; padding-top:2px;">
+                                        Agrupar por ubicación
+                                    </label>
+                                </div>
+                                <div class="custom-control custom-switch mt-1">
+                                    <input type="checkbox" class="custom-control-input" id="lev-incluir-cero">
+                                    <label class="custom-control-label" for="lev-incluir-cero" style="font-size:13px; padding-top:2px;">
+                                        Incluir materiales con stock cero
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="generarPdfLevantamiento()" class="btn-pdf morado">
+                                <i class="fas fa-file-pdf"></i> Generar PDF
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -377,6 +430,48 @@
                 }
             },
         });
+
+
+        // ── Levantamiento Físico de Inventario ─────────────────────────
+        $('#lev-materiales').select2({
+            theme: "bootstrap-5",
+            placeholder: "— Todos los materiales —",
+            allowClear: true,
+            closeOnSelect: false,
+            width: '100%',
+            "language": {
+                "noResults": function(){
+                    return "Búsqueda no encontrada";
+                }
+            },
+        });
+
+        $('#lev-materiales').on('change', function () {
+            var cantidad = ($(this).val() || []).length;
+            $('#lev-contador').text(
+                cantidad === 0
+                    ? 'Se incluirán todos los materiales'
+                    : cantidad + (cantidad === 1 ? ' material seleccionado' : ' materiales seleccionados')
+            );
+        });
+
+        function limpiarLevantamiento() {
+            $('#lev-materiales').val(null).trigger('change');
+        }
+
+        function generarPdfLevantamiento() {
+            var ids     = $('#lev-materiales').val() || [];
+            var cero    = $('#lev-incluir-cero').is(':checked') ? 1 : 0;
+            var agrupar = $('#lev-agrupar').is(':checked') ? 1 : 0;
+
+            var params = new URLSearchParams({
+                materiales: ids.join(','),
+                cero: cero,
+                agrupar: agrupar
+            });
+
+            window.open("{{ url('admin/reporte/levantamiento/pdf') }}?" + params.toString(), '_blank');
+        }
 
 
         // ── Reporte de Entradas/Salidas por Período ────────────────────
