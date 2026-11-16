@@ -1066,12 +1066,7 @@ class ReportesController extends Controller
         $mpdf->Output('inventario_' . date('Ymd_His') . '.pdf', 'I');
     }
 
-<?php
 
-// Requiere en el controlador:
-// use Carbon\Carbon;
-// use Illuminate\Support\Facades\DB;
-// use App\Models\InformacionGeneral; (ajusta el namespace a tu proyecto)
 
     public function reportePDFInicialPorPeriodos($desde, $hasta)
     {
