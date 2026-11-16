@@ -1068,18 +1068,24 @@ class ReportesController extends Controller
 
 
 
+
+
+
+
+// Requiere en el controlador:
+// use Carbon\Carbon;
+// use Illuminate\Support\Facades\DB;
+// use App\Models\InformacionGeneral; (ajusta el namespace a tu proyecto)
+
     public function reportePDFInicialPorPeriodos($desde, $hasta)
     {
-        // ── Límites ampliados para reportes grandes ──────────────────────────
-        ini_set('memory_limit', '2048M');
-        ini_set('max_execution_time', '0');
-        set_time_limit(0);
+        // ── Límites para reportes grandes ────────────────────────────────────
         ini_set('pcre.backtrack_limit', '50000000');
-        ini_set('pcre.recursion_limit', '50000000');
-        ini_set('pcre.jit', '0');
+        ini_set('memory_limit', '2048M');
+        set_time_limit(0);
 
         $start = Carbon::parse($desde)->startOfDay();
-        $end   = Carbon::parse($hasta)->endOfDay();
+        $end = Carbon::parse($hasta)->endOfDay();
 
         $desdeFormat = Carbon::parse($desde)->format('d/m/Y');
         $hastaFormat = Carbon::parse($hasta)->format('d/m/Y');
@@ -1182,71 +1188,71 @@ class ReportesController extends Controller
         ]);
 
         $rows = array_values(array_filter($rows, function ($r) {
-            $inicial  = (float) ($r->saldo_inicial_cant ?? 0);
-            $entradas = (float) ($r->entradas_mes_cant ?? 0);
-            $salidas  = (float) ($r->salidas_mes_cant ?? 0);
-            $final    = (float) ($r->saldo_final_cant ?? 0);
+            $inicial = (float)($r->saldo_inicial_cant ?? 0);
+            $entradas = (float)($r->entradas_mes_cant ?? 0);
+            $salidas = (float)($r->salidas_mes_cant ?? 0);
+            $final = (float)($r->saldo_final_cant ?? 0);
 
             return !($inicial == 0 && $entradas == 0 && $salidas == 0 && $final == 0);
         }));
 
         // ── Totales generales, resumen por código y agrupación por material ───
         $totales = [
-            'inicial_cant'   => 0,
-            'entradas_cant'  => 0,
-            'salidas_cant'   => 0,
-            'final_cant'     => 0,
-            'inicial_money'  => 0.0,
+            'inicial_cant' => 0,
+            'entradas_cant' => 0,
+            'salidas_cant' => 0,
+            'final_cant' => 0,
+            'inicial_money' => 0.0,
             'entradas_money' => 0.0,
-            'salidas_money'  => 0.0,
-            'final_money'    => 0.0,
+            'salidas_money' => 0.0,
+            'final_money' => 0.0,
         ];
 
         $sumPorCodigo = [];
-        $porMaterial  = [];
+        $porMaterial = [];
 
         foreach ($rows as $r) {
-            $totales['inicial_cant']   += (int)   ($r->saldo_inicial_cant  ?? 0);
-            $totales['entradas_cant']  += (int)   ($r->entradas_mes_cant   ?? 0);
-            $totales['salidas_cant']   += (int)   ($r->salidas_mes_cant    ?? 0);
-            $totales['final_cant']     += (int)   ($r->saldo_final_cant    ?? 0);
-            $totales['inicial_money']  += (float) ($r->saldo_inicial_money ?? 0);
-            $totales['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
-            $totales['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
-            $totales['final_money']    += (float) ($r->saldo_final_money   ?? 0);
+            $totales['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
+            $totales['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
+            $totales['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
+            $totales['final_cant'] += (int)($r->saldo_final_cant ?? 0);
+            $totales['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
+            $totales['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
+            $totales['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
+            $totales['final_money'] += (float)($r->saldo_final_money ?? 0);
 
             $codigo = $r->codigo ?? 'SIN-CODIGO';
 
             if (!isset($sumPorCodigo[$codigo])) {
                 $sumPorCodigo[$codigo] = [
-                    'codigo'         => $codigo,
-                    'inicial_cant'   => 0,
-                    'entradas_cant'  => 0,
-                    'salidas_cant'   => 0,
-                    'final_cant'     => 0,
-                    'inicial_money'  => 0.0,
+                    'codigo' => $codigo,
+                    'inicial_cant' => 0,
+                    'entradas_cant' => 0,
+                    'salidas_cant' => 0,
+                    'final_cant' => 0,
+                    'inicial_money' => 0.0,
                     'entradas_money' => 0.0,
-                    'salidas_money'  => 0.0,
-                    'final_money'    => 0.0,
+                    'salidas_money' => 0.0,
+                    'final_money' => 0.0,
                 ];
             }
 
-            $sumPorCodigo[$codigo]['inicial_cant']   += (int)   ($r->saldo_inicial_cant  ?? 0);
-            $sumPorCodigo[$codigo]['entradas_cant']  += (int)   ($r->entradas_mes_cant   ?? 0);
-            $sumPorCodigo[$codigo]['salidas_cant']   += (int)   ($r->salidas_mes_cant    ?? 0);
-            $sumPorCodigo[$codigo]['final_cant']     += (int)   ($r->saldo_final_cant    ?? 0);
-            $sumPorCodigo[$codigo]['inicial_money']  += (float) ($r->saldo_inicial_money ?? 0);
-            $sumPorCodigo[$codigo]['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
-            $sumPorCodigo[$codigo]['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
-            $sumPorCodigo[$codigo]['final_money']    += (float) ($r->saldo_final_money   ?? 0);
+            $sumPorCodigo[$codigo]['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
+            $sumPorCodigo[$codigo]['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
+            $sumPorCodigo[$codigo]['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
+            $sumPorCodigo[$codigo]['final_cant'] += (int)($r->saldo_final_cant ?? 0);
+            $sumPorCodigo[$codigo]['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
+            $sumPorCodigo[$codigo]['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
+            $sumPorCodigo[$codigo]['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
+            $sumPorCodigo[$codigo]['final_money'] += (float)($r->saldo_final_money ?? 0);
 
             $idMat = $r->id_material;
 
             if (!isset($porMaterial[$idMat])) {
                 $porMaterial[$idMat] = [
-                    'codigo'      => $r->codigo,
+                    'codigo' => $r->codigo,
                     'descripcion' => $r->descripcion,
-                    'lotes'       => [],
+                    'lotes' => [],
                 ];
             }
 
@@ -1258,20 +1264,13 @@ class ReportesController extends Controller
 
         // ── mPDF ──────────────────────────────────────────────────────────────
         $mpdf = new \Mpdf\Mpdf([
-            'tempDir'     => sys_get_temp_dir(),
-            'format'      => 'LETTER',
+            'tempDir' => sys_get_temp_dir(),
+            'format' => 'LETTER',
             'orientation' => 'L',
         ]);
 
         $mpdf->SetTitle('Reporte Mensual de Inventario');
         $mpdf->showImageErrors = false;
-
-        // ── Optimización para tablas con miles de filas ──────────────────────
-        $mpdf->packTableData    = true;
-        $mpdf->simpleTables     = false;
-        $mpdf->useSubstitutions = false;
-        $mpdf->autoScriptToLang = false;
-        $mpdf->autoLangToFont   = false;
 
         // ── CSS externo (si existe) ───────────────────────────────────────────
         if (file_exists(public_path('css/cssbodega.css'))) {
@@ -1365,10 +1364,10 @@ class ReportesController extends Controller
         // backtrack_limit y reduce el consumo de memoria.
         $tamBloque = 150; // materiales por bloque (baja a 80 si aún falla)
 
-        $i          = 1;
-        $enBloque   = 0;
-        $html       = '';
-        $hayFilas   = !empty($porMaterial);
+        $i = 1;
+        $enBloque = 0;
+        $html = '';
+        $hayFilas = !empty($porMaterial);
 
         $abrirTabla = function () use ($thead) {
             return "<table class='rep' cellspacing='0' cellpadding='4'>{$thead}<tbody>";
@@ -1380,41 +1379,41 @@ class ReportesController extends Controller
 
         foreach ($porMaterial as $grupo) {
 
-            $lotes      = $grupo['lotes'];
+            $lotes = $grupo['lotes'];
             $totalLotes = count($lotes);
-            $esPrimero  = true;
+            $esPrimero = true;
 
             $sub = [
-                'inicial_cant'   => 0,
-                'entradas_cant'  => 0,
-                'salidas_cant'   => 0,
-                'final_cant'     => 0,
-                'inicial_money'  => 0.0,
+                'inicial_cant' => 0,
+                'entradas_cant' => 0,
+                'salidas_cant' => 0,
+                'final_cant' => 0,
+                'inicial_money' => 0.0,
                 'entradas_money' => 0.0,
-                'salidas_money'  => 0.0,
-                'final_money'    => 0.0,
+                'salidas_money' => 0.0,
+                'final_money' => 0.0,
             ];
 
             foreach ($lotes as $r) {
 
-                $sub['inicial_cant']   += (int)   ($r->saldo_inicial_cant  ?? 0);
-                $sub['entradas_cant']  += (int)   ($r->entradas_mes_cant   ?? 0);
-                $sub['salidas_cant']   += (int)   ($r->salidas_mes_cant    ?? 0);
-                $sub['final_cant']     += (int)   ($r->saldo_final_cant    ?? 0);
-                $sub['inicial_money']  += (float) ($r->saldo_inicial_money ?? 0);
-                $sub['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
-                $sub['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
-                $sub['final_money']    += (float) ($r->saldo_final_money   ?? 0);
+                $sub['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
+                $sub['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
+                $sub['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
+                $sub['final_cant'] += (int)($r->saldo_final_cant ?? 0);
+                $sub['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
+                $sub['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
+                $sub['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
+                $sub['final_money'] += (float)($r->saldo_final_money ?? 0);
 
                 $cls = $esPrimero ? 'r' : 'r lote';
 
                 if ($esPrimero) {
-                    $celdaNum  = "<td>{$i}</td>";
-                    $celdaCod  = "<td>" . e($grupo['codigo']) . "</td>";
+                    $celdaNum = "<td>{$i}</td>";
+                    $celdaCod = "<td>" . e($grupo['codigo']) . "</td>";
                     $celdaDesc = "<td>" . e($grupo['descripcion']) . "</td>";
                 } else {
-                    $celdaNum  = "<td class='lote'></td>";
-                    $celdaCod  = "<td class='lote'></td>";
+                    $celdaNum = "<td class='lote'></td>";
+                    $celdaCod = "<td class='lote'></td>";
                     $celdaDesc = "<td class='lote'></td>";
                 }
 
@@ -1456,7 +1455,7 @@ class ReportesController extends Controller
             if ($enBloque >= $tamBloque) {
                 $html .= "</tbody></table>";
                 $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
-                $html     = $abrirTabla();
+                $html = $abrirTabla();
                 $enBloque = 0;
             }
         }
@@ -1482,13 +1481,13 @@ class ReportesController extends Controller
 <tbody>
     <tr class='tot'>
         <td style='width:41%'>Totales:</td>
-        <td style='width:6%'>"  . number_format($totales['inicial_cant']) . "</td>
+        <td style='width:6%'>" . number_format($totales['inicial_cant']) . "</td>
         <td style='width:8%'>$" . number_format($totales['inicial_money'], 2) . "</td>
-        <td style='width:7%'>"  . number_format($totales['entradas_cant']) . "</td>
+        <td style='width:7%'>" . number_format($totales['entradas_cant']) . "</td>
         <td style='width:9%'>$" . number_format($totales['entradas_money'], 2) . "</td>
-        <td style='width:7%'>"  . number_format($totales['salidas_cant']) . "</td>
+        <td style='width:7%'>" . number_format($totales['salidas_cant']) . "</td>
         <td style='width:8%'>$" . number_format($totales['salidas_money'], 2) . "</td>
-        <td style='width:6%'>"  . number_format($totales['final_cant']) . "</td>
+        <td style='width:6%'>" . number_format($totales['final_cant']) . "</td>
         <td style='width:8%'>$" . number_format($totales['final_money'], 2) . "</td>
     </tr>
 </tbody>
@@ -1553,7 +1552,7 @@ class ReportesController extends Controller
 
             $j = 1;
             foreach ($sumPorCodigo as $s) {
-                $totalSaldoFinalCodigos += (float) $s['final_money'];
+                $totalSaldoFinalCodigos += (float)$s['final_money'];
 
                 $htmlCod .= "<tr>"
                     . "<td>{$j}</td>"
@@ -1584,8 +1583,8 @@ class ReportesController extends Controller
 
         // ── Firma (3 bloques) ─────────────────────────────────────────────────
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();
-        $margenFirma  = (int)  ($informacionGeneral->px_firmas ?? 40);
-        $saltoPagina  = (bool) ($informacionGeneral->salto_pagina ?? false);
+        $margenFirma = (int)($informacionGeneral->px_firmas ?? 40);
+        $saltoPagina = (bool)($informacionGeneral->salto_pagina ?? false);
 
         $estiloSalto = $saltoPagina ? "page-break-before: always;" : "";
 
@@ -1627,8 +1626,6 @@ class ReportesController extends Controller
 
         $mpdf->Output();
     }
-
-
 
 
 
