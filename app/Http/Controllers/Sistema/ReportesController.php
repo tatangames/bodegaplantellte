@@ -1066,17 +1066,33 @@ class ReportesController extends Controller
         $mpdf->Output('inventario_' . date('Ymd_His') . '.pdf', 'I');
     }
 
+<?php
+
+// Requiere en el controlador:
+// use Carbon\Carbon;
+// use Illuminate\Support\Facades\DB;
+// use App\Models\InformacionGeneral; (ajusta el namespace a tu proyecto)
 
     public function reportePDFInicialPorPeriodos($desde, $hasta)
     {
+        // ── Límites ampliados para reportes grandes ──────────────────────────
+        ini_set('memory_limit', '2048M');
+        ini_set('max_execution_time', '0');
+        set_time_limit(0);
+        ini_set('pcre.backtrack_limit', '50000000');
+        ini_set('pcre.recursion_limit', '50000000');
+        ini_set('pcre.jit', '0');
+
         $start = Carbon::parse($desde)->startOfDay();
         $end   = Carbon::parse($hasta)->endOfDay();
 
         $desdeFormat = Carbon::parse($desde)->format('d/m/Y');
         $hastaFormat = Carbon::parse($hasta)->format('d/m/Y');
 
-        // ── Consulta: ahora se agrupa también por precio, para poder separar
-        //    los "lotes" de un mismo material que tengan distinto precio ────────
+        $d1 = $start->toDateString();
+        $d2 = $end->toDateString();
+
+        // ── Consulta ──────────────────────────────────────────────────────────
         $rows = DB::select("
     WITH movimientos AS (
 
@@ -1149,32 +1165,25 @@ class ReportesController extends Controller
     ORDER BY codigo, descripcion, precio
 ", [
             // saldo_inicial_cant
-            $start->toDateString(),
-
+            $d1,
             // entradas_mes_cant
-            $start->toDateString(), $end->toDateString(),
-
+            $d1, $d2,
             // salidas_mes_cant
-            $start->toDateString(), $end->toDateString(),
-
+            $d1, $d2,
             // saldo_final_cant
-            $start->toDateString(),
-            $start->toDateString(), $end->toDateString(),
-            $start->toDateString(), $end->toDateString(),
-
+            $d1,
+            $d1, $d2,
+            $d1, $d2,
             // saldo_inicial_money
-            $start->toDateString(),
-
+            $d1,
             // entradas_mes_money
-            $start->toDateString(), $end->toDateString(),
-
+            $d1, $d2,
             // salidas_mes_money
-            $start->toDateString(), $end->toDateString(),
-
+            $d1, $d2,
             // saldo_final_money
-            $start->toDateString(),
-            $start->toDateString(), $end->toDateString(),
-            $start->toDateString(), $end->toDateString(),
+            $d1,
+            $d1, $d2,
+            $d1, $d2,
         ]);
 
         $rows = array_values(array_filter($rows, function ($r) {
@@ -1186,8 +1195,7 @@ class ReportesController extends Controller
             return !($inicial == 0 && $entradas == 0 && $salidas == 0 && $final == 0);
         }));
 
-        // ── Totales generales (sin cambios: la suma total no varía por separar
-        //    los lotes por precio) ──────────────────────────────────────────────
+        // ── Totales generales, resumen por código y agrupación por material ───
         $totales = [
             'inicial_cant'   => 0,
             'entradas_cant'  => 0,
@@ -1200,6 +1208,7 @@ class ReportesController extends Controller
         ];
 
         $sumPorCodigo = [];
+        $porMaterial  = [];
 
         foreach ($rows as $r) {
             $totales['inicial_cant']   += (int)   ($r->saldo_inicial_cant  ?? 0);
@@ -1235,13 +1244,7 @@ class ReportesController extends Controller
             $sumPorCodigo[$codigo]['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
             $sumPorCodigo[$codigo]['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
             $sumPorCodigo[$codigo]['final_money']    += (float) ($r->saldo_final_money   ?? 0);
-        }
 
-        // ── Agrupar filas por material, para poder ocultar código/descripción
-        //    repetidos y calcular subtotal cuando hay más de un lote ────────────
-        $porMaterial = [];
-
-        foreach ($rows as $r) {
             $idMat = $r->id_material;
 
             if (!isset($porMaterial[$idMat])) {
@@ -1255,6 +1258,9 @@ class ReportesController extends Controller
             $porMaterial[$idMat]['lotes'][] = $r;
         }
 
+        // Ya no necesitamos las filas originales: liberamos memoria
+        unset($rows);
+
         // ── mPDF ──────────────────────────────────────────────────────────────
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'     => sys_get_temp_dir(),
@@ -1264,6 +1270,34 @@ class ReportesController extends Controller
 
         $mpdf->SetTitle('Reporte Mensual de Inventario');
         $mpdf->showImageErrors = false;
+
+        // ── Optimización para tablas con miles de filas ──────────────────────
+        $mpdf->packTableData    = true;
+        $mpdf->simpleTables     = false;
+        $mpdf->useSubstitutions = false;
+        $mpdf->autoScriptToLang = false;
+        $mpdf->autoLangToFont   = false;
+
+        // ── CSS externo (si existe) ───────────────────────────────────────────
+        if (file_exists(public_path('css/cssbodega.css'))) {
+            $stylesheet = file_get_contents(public_path('css/cssbodega.css'));
+            $mpdf->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
+        }
+
+        // ── CSS propio: clases para aligerar el HTML ─────────────────────────
+        $mpdf->WriteHTML("
+            table.rep      { width:100%; border-collapse:collapse; font-size:11px; }
+            table.rep th,
+            table.rep td   { border:0.8px solid #000; padding:4px; }
+            table.rep th   { background:#f2f4f8; }
+            td.r           { text-align:right; }
+            td.lote        { background:#f7f9fd; }
+            td.sub         { background:#eef2fb; font-weight:bold; text-align:right; }
+            td.subtxt      { background:#eef2fb; font-style:italic; text-align:right; }
+            tr.tot td      { font-weight:bold; background:#f9fafb; text-align:right; }
+            table.res      { border-collapse:collapse; font-size:12px; width:60%; }
+            table.res td   { border:0.8px solid #000; padding:6px; }
+        ", \Mpdf\HTMLParserMode::HEADER_CSS);
 
         $logoalcaldia = 'images/gobiernologo.jpg';
 
@@ -1304,43 +1338,50 @@ class ReportesController extends Controller
 </tr>
 </table>
 <br>
+<span style='font-weight:bold;'>Del {$desdeFormat} al {$hastaFormat}</span><br>
 ";
 
-        $encabezado .= "<span style='font-weight:bold;'>Del {$desdeFormat} al {$hastaFormat}</span><br>";
+        $mpdf->setFooter('Página {PAGENO} de {nb}');
+        $mpdf->WriteHTML($encabezado, \Mpdf\HTMLParserMode::HTML_BODY);
 
-        if (file_exists(public_path('css/cssbodega.css'))) {
-            $stylesheet = file_get_contents(public_path('css/cssbodega.css'));
-            $mpdf->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
-        }
-
-        // ── Estilos para filas de lote repetido (mismo material) ────────────────
-        $tdLote = "background:#f7f9fd;";
-
-        // ── Tabla principal ───────────────────────────────────────────────────
-        $html = $encabezado;
-
-        $html .= "
-<table width='100%' border='1' cellspacing='0' cellpadding='4' style='border-collapse:collapse; font-size:11px; margin-top:8px'>
-<thead style='background:#f2f4f8'>
+        // ── Encabezado de tabla (anchos fijos, suman 100%, para que todas las
+        //    tablas por bloques queden alineadas) ──────────────────────────────
+        $thead = "
+<thead>
     <tr>
-        <th>#</th>
-        <th>COD</th>
-        <th>DESCRIPCIÓN</th>
-        <th style='text-align:right; width:8%'>PRECIO</th>
-        <th style='text-align:right; width:6%'>INICIAL</th>
-        <th style='text-align:right; width:7%'>$ INICIAL</th>
-        <th style='text-align:right; width:8%'>ENTRADAS</th>
-        <th style='text-align:right; width:9%'>$ ENTRADAS</th>
-        <th style='text-align:right; width:8%'>SALIDAS</th>
-        <th style='text-align:right; width:8%'>$ SALIDAS</th>
-        <th style='text-align:right; width:6%'>SALDO</th>
-        <th style='text-align:right; width:7%'>$ SALDO</th>
+        <th style='width:4%'>#</th>
+        <th style='width:7%'>COD</th>
+        <th style='width:22%'>DESCRIPCIÓN</th>
+        <th style='width:8%; text-align:right'>PRECIO</th>
+        <th style='width:6%; text-align:right'>INICIAL</th>
+        <th style='width:8%; text-align:right'>\$ INICIAL</th>
+        <th style='width:7%; text-align:right'>ENTRADAS</th>
+        <th style='width:9%; text-align:right'>\$ ENTRADAS</th>
+        <th style='width:7%; text-align:right'>SALIDAS</th>
+        <th style='width:8%; text-align:right'>\$ SALIDAS</th>
+        <th style='width:6%; text-align:right'>SALDO</th>
+        <th style='width:8%; text-align:right'>\$ SALDO</th>
     </tr>
-</thead>
-<tbody>
-";
+</thead>";
 
-        $i = 1;
+        // ── Tabla principal escrita POR BLOQUES ──────────────────────────────
+        // En lugar de armar un único string gigante, se envía a mPDF cada
+        // N materiales como una tabla independiente. Esto evita el error de
+        // backtrack_limit y reduce el consumo de memoria.
+        $tamBloque = 150; // materiales por bloque (baja a 80 si aún falla)
+
+        $i          = 1;
+        $enBloque   = 0;
+        $html       = '';
+        $hayFilas   = !empty($porMaterial);
+
+        $abrirTabla = function () use ($thead) {
+            return "<table class='rep' cellspacing='0' cellpadding='4'>{$thead}<tbody>";
+        };
+
+        if ($hayFilas) {
+            $html = $abrirTabla();
+        }
 
         foreach ($porMaterial as $grupo) {
 
@@ -1348,7 +1389,6 @@ class ReportesController extends Controller
             $totalLotes = count($lotes);
             $esPrimero  = true;
 
-            // acumuladores para el subtotal del material
             $sub = [
                 'inicial_cant'   => 0,
                 'entradas_cant'  => 0,
@@ -1371,88 +1411,100 @@ class ReportesController extends Controller
                 $sub['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
                 $sub['final_money']    += (float) ($r->saldo_final_money   ?? 0);
 
-                $esLoteExtra = !$esPrimero;
-                $bg          = $esLoteExtra ? "style='{$tdLote}'" : '';
+                $cls = $esPrimero ? 'r' : 'r lote';
 
-                if (!$esLoteExtra) {
+                if ($esPrimero) {
                     $celdaNum  = "<td>{$i}</td>";
                     $celdaCod  = "<td>" . e($grupo['codigo']) . "</td>";
                     $celdaDesc = "<td>" . e($grupo['descripcion']) . "</td>";
                 } else {
-                    $celdaNum  = "<td {$bg}></td>";
-                    $celdaCod  = "<td {$bg}></td>";
-                    $celdaDesc = "<td {$bg}></td>";
+                    $celdaNum  = "<td class='lote'></td>";
+                    $celdaCod  = "<td class='lote'></td>";
+                    $celdaDesc = "<td class='lote'></td>";
                 }
 
-                $html .= "
-<tr>
-    {$celdaNum}
-    {$celdaCod}
-    {$celdaDesc}
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>$" . number_format($r->precio ?? 0, 4) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>" . number_format($r->saldo_inicial_cant ?? 0) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>$" . number_format($r->saldo_inicial_money ?? 0, 2) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>" . number_format($r->entradas_mes_cant ?? 0) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>$" . number_format($r->entradas_mes_money ?? 0, 2) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>" . number_format($r->salidas_mes_cant ?? 0) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>$" . number_format($r->salidas_mes_money ?? 0, 2) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>" . number_format($r->saldo_final_cant ?? 0) . "</td>
-    <td {$bg} style='" . ($esLoteExtra ? "{$tdLote} " : '') . "text-align:right'>$" . number_format($r->saldo_final_money ?? 0, 2) . "</td>
-</tr>
-";
+                $html .= "<tr>{$celdaNum}{$celdaCod}{$celdaDesc}"
+                    . "<td class='{$cls}'>$" . number_format($r->precio ?? 0, 4) . "</td>"
+                    . "<td class='{$cls}'>" . number_format($r->saldo_inicial_cant ?? 0) . "</td>"
+                    . "<td class='{$cls}'>$" . number_format($r->saldo_inicial_money ?? 0, 2) . "</td>"
+                    . "<td class='{$cls}'>" . number_format($r->entradas_mes_cant ?? 0) . "</td>"
+                    . "<td class='{$cls}'>$" . number_format($r->entradas_mes_money ?? 0, 2) . "</td>"
+                    . "<td class='{$cls}'>" . number_format($r->salidas_mes_cant ?? 0) . "</td>"
+                    . "<td class='{$cls}'>$" . number_format($r->salidas_mes_money ?? 0, 2) . "</td>"
+                    . "<td class='{$cls}'>" . number_format($r->saldo_final_cant ?? 0) . "</td>"
+                    . "<td class='{$cls}'>$" . number_format($r->saldo_final_money ?? 0, 2) . "</td>"
+                    . "</tr>";
 
                 $esPrimero = false;
             }
 
-            // ── Subtotal del material (solo si tiene más de un lote/precio) ─────
+            // Subtotal del material (solo si tiene más de un lote/precio)
             if ($totalLotes > 1) {
-                $html .= "
-<tr>
-    <td colspan='3' style='text-align:right; font-style:italic; background:#eef2fb;'>
-        Subtotal: " . e($grupo['descripcion']) . "
-    </td>
-    <td style='background:#eef2fb;'></td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>" . number_format($sub['inicial_cant']) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>$" . number_format($sub['inicial_money'], 2) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>" . number_format($sub['entradas_cant']) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>$" . number_format($sub['entradas_money'], 2) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>" . number_format($sub['salidas_cant']) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>$" . number_format($sub['salidas_money'], 2) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>" . number_format($sub['final_cant']) . "</td>
-    <td style='text-align:right; font-weight:bold; background:#eef2fb;'>$" . number_format($sub['final_money'], 2) . "</td>
-</tr>
-";
+                $html .= "<tr>"
+                    . "<td colspan='3' class='subtxt'>Subtotal: " . e($grupo['descripcion']) . "</td>"
+                    . "<td class='sub'></td>"
+                    . "<td class='sub'>" . number_format($sub['inicial_cant']) . "</td>"
+                    . "<td class='sub'>$" . number_format($sub['inicial_money'], 2) . "</td>"
+                    . "<td class='sub'>" . number_format($sub['entradas_cant']) . "</td>"
+                    . "<td class='sub'>$" . number_format($sub['entradas_money'], 2) . "</td>"
+                    . "<td class='sub'>" . number_format($sub['salidas_cant']) . "</td>"
+                    . "<td class='sub'>$" . number_format($sub['salidas_money'], 2) . "</td>"
+                    . "<td class='sub'>" . number_format($sub['final_cant']) . "</td>"
+                    . "<td class='sub'>$" . number_format($sub['final_money'], 2) . "</td>"
+                    . "</tr>";
             }
 
             $i++;
+            $enBloque++;
+
+            // Cierra el bloque actual, lo manda a mPDF y abre uno nuevo
+            if ($enBloque >= $tamBloque) {
+                $html .= "</tbody></table>";
+                $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+                $html     = $abrirTabla();
+                $enBloque = 0;
+            }
         }
 
-        if (!$rows) {
-            $html .= "<tr><td colspan='12' style='text-align:center; color:#888;'>Sin registros en el rango seleccionado.</td></tr>";
+        if ($hayFilas) {
+            // Cierra el último bloque
+            $html .= "</tbody></table>";
+            $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+        } else {
+            $mpdf->WriteHTML(
+                "<table class='rep' cellspacing='0' cellpadding='4'>{$thead}<tbody>
+                 <tr><td colspan='12' style='text-align:center; color:#888;'>Sin registros en el rango seleccionado.</td></tr>
+                 </tbody></table>",
+                \Mpdf\HTMLParserMode::HTML_BODY
+            );
         }
 
-        $html .= "
-</tbody>
-<tfoot>
-    <tr style='font-weight:bold; background:#f9fafb'>
-        <td colspan='4' style='text-align:right'>Totales:</td>
-        <td style='text-align:right'>" . number_format($totales['inicial_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($totales['inicial_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($totales['entradas_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($totales['entradas_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($totales['salidas_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($totales['salidas_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($totales['final_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($totales['final_money'], 2) . "</td>
+        unset($porMaterial, $html);
+
+        // ── Fila de totales generales (misma estructura de anchos) ───────────
+        $htmlTotales = "
+<table class='rep' cellspacing='0' cellpadding='4'>
+<tbody>
+    <tr class='tot'>
+        <td style='width:41%'>Totales:</td>
+        <td style='width:6%'>"  . number_format($totales['inicial_cant']) . "</td>
+        <td style='width:8%'>$" . number_format($totales['inicial_money'], 2) . "</td>
+        <td style='width:7%'>"  . number_format($totales['entradas_cant']) . "</td>
+        <td style='width:9%'>$" . number_format($totales['entradas_money'], 2) . "</td>
+        <td style='width:7%'>"  . number_format($totales['salidas_cant']) . "</td>
+        <td style='width:8%'>$" . number_format($totales['salidas_money'], 2) . "</td>
+        <td style='width:6%'>"  . number_format($totales['final_cant']) . "</td>
+        <td style='width:8%'>$" . number_format($totales['final_money'], 2) . "</td>
     </tr>
-</tfoot>
+</tbody>
 </table>
 ";
+        $mpdf->WriteHTML($htmlTotales, \Mpdf\HTMLParserMode::HTML_BODY);
 
         // ── Resumen del período ───────────────────────────────────────────────
-        $html .= "
+        $htmlResumen = "
 <br>
-<table width='60%' border='1' cellspacing='0' cellpadding='6' style='border-collapse:collapse; font-size:12px'>
+<table class='res' cellspacing='0' cellpadding='6'>
 <tr style='background:#eef3ff; font-weight:bold; text-align:center'>
     <td colspan='3'>Resumen del período {$desdeFormat} - {$hastaFormat}</td>
 </tr>
@@ -1478,26 +1530,27 @@ class ReportesController extends Controller
 </tr>
 </table>
 ";
+        $mpdf->WriteHTML($htmlResumen, \Mpdf\HTMLParserMode::HTML_BODY);
 
         // ── Tabla resumen por código ──────────────────────────────────────────
         if (!empty($sumPorCodigo)) {
             $totalSaldoFinalCodigos = 0;
 
-            $html .= "
+            $htmlCod = "
 <br><br>
-<table width='100%' border='1' cellspacing='0' cellpadding='4' style='border-collapse:collapse; font-size:11px'>
-<thead style='background:#f2f4f8'>
+<table class='rep' cellspacing='0' cellpadding='4'>
+<thead>
     <tr>
         <th style='width:4%'>#</th>
         <th style='width:10%'>Código</th>
         <th style='text-align:right; width:6%'>INICIAL</th>
-        <th style='text-align:right; width:10%'>$ INICIAL</th>
+        <th style='text-align:right; width:10%'>\$ INICIAL</th>
         <th style='text-align:right; width:6%'>ENTRADAS</th>
-        <th style='text-align:right; width:10%'>$ ENTRADAS</th>
+        <th style='text-align:right; width:10%'>\$ ENTRADAS</th>
         <th style='text-align:right; width:6%'>SALIDAS</th>
-        <th style='text-align:right; width:10%'>$ SALIDAS</th>
+        <th style='text-align:right; width:10%'>\$ SALIDAS</th>
         <th style='text-align:right; width:6%'>SALDO</th>
-        <th style='text-align:right; width:10%'>$ SALDO</th>
+        <th style='text-align:right; width:10%'>\$ SALDO</th>
     </tr>
 </thead>
 <tbody>
@@ -1507,31 +1560,31 @@ class ReportesController extends Controller
             foreach ($sumPorCodigo as $s) {
                 $totalSaldoFinalCodigos += (float) $s['final_money'];
 
-                $html .= "
-    <tr>
-        <td>{$j}</td>
-        <td>" . e($s['codigo']) . "</td>
-        <td style='text-align:right'>" . number_format($s['inicial_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($s['inicial_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($s['entradas_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($s['entradas_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($s['salidas_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($s['salidas_money'], 2) . "</td>
-        <td style='text-align:right'>" . number_format($s['final_cant']) . "</td>
-        <td style='text-align:right'>$" . number_format($s['final_money'], 2) . "</td>
-    </tr>
-";
+                $htmlCod .= "<tr>"
+                    . "<td>{$j}</td>"
+                    . "<td>" . e($s['codigo']) . "</td>"
+                    . "<td class='r'>" . number_format($s['inicial_cant']) . "</td>"
+                    . "<td class='r'>$" . number_format($s['inicial_money'], 2) . "</td>"
+                    . "<td class='r'>" . number_format($s['entradas_cant']) . "</td>"
+                    . "<td class='r'>$" . number_format($s['entradas_money'], 2) . "</td>"
+                    . "<td class='r'>" . number_format($s['salidas_cant']) . "</td>"
+                    . "<td class='r'>$" . number_format($s['salidas_money'], 2) . "</td>"
+                    . "<td class='r'>" . number_format($s['final_cant']) . "</td>"
+                    . "<td class='r'>$" . number_format($s['final_money'], 2) . "</td>"
+                    . "</tr>";
                 $j++;
             }
 
-            $html .= "
-    <tr style='font-weight:bold; background:#f9fafb'>
-        <td colspan='9' style='text-align:right'>TOTAL</td>
-        <td style='text-align:right'>$" . number_format($totalSaldoFinalCodigos, 2) . "</td>
+            $htmlCod .= "
+    <tr class='tot'>
+        <td colspan='9'>TOTAL</td>
+        <td>$" . number_format($totalSaldoFinalCodigos, 2) . "</td>
     </tr>
 </tbody>
 </table>
 ";
+            $mpdf->WriteHTML($htmlCod, \Mpdf\HTMLParserMode::HTML_BODY);
+            unset($htmlCod);
         }
 
         // ── Firma (3 bloques) ─────────────────────────────────────────────────
@@ -1541,7 +1594,7 @@ class ReportesController extends Controller
 
         $estiloSalto = $saltoPagina ? "page-break-before: always;" : "";
 
-        $html .= "
+        $htmlFirma = "
     <div style='{$estiloSalto} padding-top:{$margenFirma}px;'>
         <table width='100%' style='font-size:12px; text-align:center; border-collapse:collapse;'>
             <tr>
@@ -1550,13 +1603,13 @@ class ReportesController extends Controller
                 <td style='width:33%; text-align:center; padding-bottom:0;'>F._____________________________</td>
             </tr>
             <tr>
-                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte}
                 </td>
-                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte2}
                 </td>
-                <td style='width:33%; text-align:center;  padding-top:20px; font-size:12px;'>
+                <td style='width:33%; text-align:center; padding-top:20px; font-size:12px;'>
                     {$informacionGeneral->nombre_reporte3}
                 </td>
             </tr>
@@ -1575,10 +1628,20 @@ class ReportesController extends Controller
     </div>
     ";
 
-        $mpdf->setFooter('Página {PAGENO} de {nb}');
-        $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+        $mpdf->WriteHTML($htmlFirma, \Mpdf\HTMLParserMode::HTML_BODY);
+
         $mpdf->Output();
     }
+
+
+
+
+
+
+
+
+
+
 
 
 
