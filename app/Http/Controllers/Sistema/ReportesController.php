@@ -1836,13 +1836,15 @@ class ReportesController extends Controller
 
 
 
+
+
     public function pdfLevantamientoFisico(Request $request)
     {
         // Margen de seguridad para reportes grandes
         @ini_set('pcre.backtrack_limit', '10000000');
 
-        $fechaHoy     = Carbon::now('America/El_Salvador')->format('d-m-Y');
-        $logoalcaldia = 'images/logo.png';
+        $fechaHoy       = Carbon::now('America/El_Salvador')->format('d-m-Y');
+        $logoalcaldia   = 'images/logo.png';
         $filasPorBloque = 250; // filas máximas por cada WriteHTML()
 
         // ── Parámetros ────────────────────────────────────────────────────
@@ -1856,30 +1858,23 @@ class ReportesController extends Controller
         $incluirCero      = (int) $request->input('cero', 0) === 1;
         $agruparUbicacion = (int) $request->input('agrupar', 1) === 1;
 
-        // ── Stock por material + ubicación (entradas_detalle.id_ubicaciones) ──
-        $subEntradas = DB::table('entradas_detalle')
-            ->select(
-                'id_material',
-                'id_ubicaciones',
-                DB::raw('SUM(cantidad_inicial) AS total_entradas')
-            )
-            ->groupBy('id_material', 'id_ubicaciones');
+        // ── Stock y valor por material + ubicación (a nivel de cada entrada_detalle) ──
+        $subSalidasPorEntrada = DB::table('salidas_detalle')
+            ->select('id_entrada_detalle', DB::raw('SUM(cantidad_salida) AS total_salidas'))
+            ->groupBy('id_entrada_detalle');
 
-        $subSalidas = DB::table('salidas_detalle as sd')
-            ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')
+        $subStock = DB::table('entradas_detalle as ed')
+            ->leftJoinSub($subSalidasPorEntrada, 'sd', 'sd.id_entrada_detalle', '=', 'ed.id')
             ->select(
                 'ed.id_material',
                 'ed.id_ubicaciones',
-                DB::raw('SUM(sd.cantidad_salida) AS total_salidas')
+                DB::raw('SUM(ed.cantidad_inicial - COALESCE(sd.total_salidas, 0)) AS stock'),
+                DB::raw('SUM((ed.cantidad_inicial - COALESCE(sd.total_salidas, 0)) * ed.precio) AS valor')
             )
             ->groupBy('ed.id_material', 'ed.id_ubicaciones');
 
         $query = DB::table('materiales as m')
-            ->leftJoinSub($subEntradas, 'e', 'e.id_material', '=', 'm.id')
-            ->leftJoinSub($subSalidas, 's', function ($join) {
-                $join->on('s.id_material', '=', 'e.id_material')
-                    ->on('s.id_ubicaciones', '<=>', 'e.id_ubicaciones'); // null-safe
-            })
+            ->leftJoinSub($subStock, 'e', 'e.id_material', '=', 'm.id')
             ->leftJoin('ubicaciones as u', 'u.id', '=', 'e.id_ubicaciones')
             ->leftJoin('objeto_especifico as oe', 'oe.id', '=', 'm.id_objespecifico')
             ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
@@ -1889,7 +1884,8 @@ class ReportesController extends Controller
                 'u.nombre as ubicacion',
                 'oe.codigo as objespec',
                 'um.nombre as medida',
-                DB::raw('COALESCE(e.total_entradas, 0) - COALESCE(s.total_salidas, 0) AS stock_sistema')
+                DB::raw('COALESCE(e.stock, 0) AS stock_sistema'),
+                DB::raw('COALESCE(e.valor, 0) AS valor_sistema')
             );
 
         if (!empty($ids)) {
@@ -1919,16 +1915,16 @@ class ReportesController extends Controller
             $etiquetaMateriales = count($ids) . ' materiales seleccionados';
         }
 
-        // ── CSS (reemplaza los estilos inline de cada celda) ──────────────
+        // ── CSS ───────────────────────────────────────────────────────────
         $css = "
-            .tlev { border-collapse:collapse; font-family:Arial, sans-serif; width:100%; }
-            .th   { font-weight:bold; font-size:10px; color:#fff; background-color:#4A5568; padding:5px 4px; border:0.8px solid #2D3748; }
-            .td   { font-size:10px; padding:8px 4px; border:0.8px solid #ccc; }
-            .c    { text-align:center; }
-            .b    { font-weight:bold; }
-            .grp  { font-family:Arial, sans-serif; font-weight:bold; font-size:11px; padding:5px 6px;
-                    background-color:#e9e3f7; border:0.8px solid #bbb; margin-top:6px; }
-        ";
+        .tlev { border-collapse:collapse; font-family:Arial, sans-serif; width:100%; }
+        .th   { font-weight:bold; font-size:10px; color:#fff; background-color:#4A5568; padding:5px 4px; border:0.8px solid #2D3748; }
+        .td   { font-size:10px; padding:8px 4px; border:0.8px solid #ccc; }
+        .c    { text-align:center; }
+        .b    { font-weight:bold; }
+        .grp  { font-family:Arial, sans-serif; font-weight:bold; font-size:11px; padding:5px 6px;
+                background-color:#e9e3f7; border:0.8px solid #bbb; margin-top:6px; }
+    ";
 
         // ── Encabezado ────────────────────────────────────────────────────
         $encabezado = "
@@ -1982,13 +1978,15 @@ class ReportesController extends Controller
     <thead>
         <tr>
             <td class='th c' width='4%'>#</td>
-            <td class='th' width='14%'>Ubicación</td>
-            <td class='th' width='10%'>Cod. Presu.</td>
-            <td class='th' width='30%'>Material</td>
-            <td class='th' width='10%'>Medida</td>
-            <td class='th c' width='11%'>Stock Sistema</td>
-            <td class='th c' width='11%'>Stock Actual</td>
-            <td class='th c' width='10%'>Diferencia</td>
+            <td class='th' width='11%'>Ubicación</td>
+            <td class='th' width='8%'>Cod. Presu.</td>
+            <td class='th' width='23%'>Material</td>
+            <td class='th' width='8%'>Medida</td>
+            <td class='th c' width='9%'>Stock Sistema</td>
+            <td class='th c' width='9%'>Precio Unit.</td>
+            <td class='th c' width='10%'>Total</td>
+            <td class='th c' width='9%'>Stock Actual</td>
+            <td class='th c' width='9%'>Diferencia</td>
         </tr>
     </thead>
     <tbody>";
@@ -2020,6 +2018,7 @@ class ReportesController extends Controller
         $contBloque   = 0;
         $i            = 1;
         $ubicacionAct = null;
+        $totalGeneral = 0;
 
         $flush = function () use (&$filasHtml, &$contBloque, $mpdf, $aperturaTabla, $cierreTabla) {
             if ($contBloque === 0) {
@@ -2040,8 +2039,15 @@ class ReportesController extends Controller
                 $ubicacionAct = $ubicacion;
             }
 
-            $stock    = (float) $r->stock_sistema;
-            $stockFmt = (floor($stock) == $stock) ? number_format($stock, 0) : number_format($stock, 2);
+            $stock   = (float) $r->stock_sistema;
+            $valor   = (float) $r->valor_sistema;
+            $precioU = $stock > 0 ? $valor / $stock : 0;
+
+            $stockFmt  = (floor($stock) == $stock) ? number_format($stock, 0) : number_format($stock, 2);
+            $precioFmt = '$' . number_format($precioU, 4);
+            $totalFmt  = '$' . number_format($valor, 2);
+
+            $totalGeneral += $valor;
 
             $filasHtml .= "<tr>"
                 . "<td class='td c'>{$i}</td>"
@@ -2050,6 +2056,8 @@ class ReportesController extends Controller
                 . "<td class='td'>" . e($r->nombre ?? '') . "</td>"
                 . "<td class='td'>" . e($r->medida ?? '') . "</td>"
                 . "<td class='td c b'>{$stockFmt}</td>"
+                . "<td class='td c'>{$precioFmt}</td>"
+                . "<td class='td c b'>{$totalFmt}</td>"
                 . "<td class='td'></td>"
                 . "<td class='td'></td>"
                 . "</tr>";
@@ -2068,10 +2076,20 @@ class ReportesController extends Controller
         if ($rows->isEmpty()) {
             $mpdf->WriteHTML(
                 $aperturaTabla
-                . "<tr><td colspan='8' class='td c' style='color:#888; font-size:12px; padding:12px;'>No hay materiales que coincidan con los filtros seleccionados.</td></tr>"
+                . "<tr><td colspan='10' class='td c' style='color:#888; font-size:12px; padding:12px;'>No hay materiales que coincidan con los filtros seleccionados.</td></tr>"
                 . $cierreTabla,
                 \Mpdf\HTMLParserMode::HTML_BODY
             );
+        } else {
+            // ── Total general ─────────────────────────────────────────────
+            $mpdf->WriteHTML("
+<table class='tlev' style='margin-top:4px;'>
+    <tr>
+        <td class='td b' style='text-align:right; width:72%; background-color:#f5f5f5;'>TOTAL GENERAL</td>
+        <td class='td c b' style='width:10%; background-color:#f5f5f5;'>$" . number_format($totalGeneral, 2) . "</td>
+        <td class='td' style='width:18%;'></td>
+    </tr>
+</table>", \Mpdf\HTMLParserMode::HTML_BODY);
         }
 
         // ── Observaciones ─────────────────────────────────────────────────
@@ -2087,4 +2105,16 @@ class ReportesController extends Controller
 
         $mpdf->Output('levantamiento_fisico_' . date('Ymd_His') . '.pdf', 'I');
     }
+
+
+
+
+
+
+
+
+
+
+
+
 }
